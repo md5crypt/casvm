@@ -1,0 +1,11 @@
+#pragma once
+
+#define MEMMAP_SIZE			256*256
+#define MEMMAP_STACK_SIZE	1024
+
+#define MEMORY_L0_SIZE		256*256
+#define MEMORY_L1_SIZE		256*256
+#define MEMORY_L2_SIZE		256*256
+#define MEMORY_L3_SIZE		256*256
+
+#define STRINGSET_SIZE		1024
