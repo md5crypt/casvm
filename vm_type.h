@@ -1,12 +1,13 @@
 #pragma once
-#define VM_TYPE_COUNT	11
+#define VM_TYPE_COUNT	12
 
 typedef enum {
+	VM_INVALID_T,
 	VM_UNDEFINED_T,
 	VM_SCALAR_T,
 	VM_BOOLEAN_T,
-	VM_FLOAT_T,
 	VM_INTEGER_T,
+	VM_FLOAT_T,
 	VM_VECTOR_T,
 	VM_STRING_T,
 	VM_ARRAY_T,

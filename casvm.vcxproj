@@ -28,13 +28,13 @@
     <ClCompile Include="vm_type.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="vm_op.h" />
     <ClInclude Include="vm.h" />
     <ClInclude Include="vm_array.h" />
     <ClInclude Include="vm_conf.h" />
     <ClInclude Include="vm_exception.h" />
     <ClInclude Include="vm_hashmap.h" />
     <ClInclude Include="vm_memory.h" />
-    <ClInclude Include="vm_object.h" />
     <ClInclude Include="vm_string.h" />
     <ClInclude Include="vm_type.h" />
     <ClInclude Include="vm_util.h" />
@@ -104,7 +104,9 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <DisableSpecificWarnings>4200;4255%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4200;4255;4204%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <ExpandAttributedSource>false</ExpandAttributedSource>
+      <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,7 +133,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <DisableSpecificWarnings>4200;4255%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4200;4255;4204%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <ExpandAttributedSource>false</ExpandAttributedSource>
+      <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

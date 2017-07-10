@@ -1,12 +1,13 @@
 var fs = require('fs');
 
 var types = [
+	['VM_INVALID_T',null],
 	['VM_UNDEFINED_T',null],
 	
 	['VM_SCALAR_T',null],
 	['VM_BOOLEAN_T','VM_SCALAR_T'],
-	['VM_FLOAT_T','VM_SCALAR_T'],
 	['VM_INTEGER_T','VM_SCALAR_T'],
+	['VM_FLOAT_T','VM_SCALAR_T'],
 	
 	['VM_VECTOR_T',null],
 	['VM_STRING_T','VM_VECTOR_T'],

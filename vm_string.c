@@ -86,3 +86,9 @@ vm_mmid_t vm_string_copy(vm_mmid_t srcid, bool constant){
 	memcpy(dst->data, src->data, src->size*2);
 	return dstid;
 }
+
+uint32_t vm_string_cmp(vm_mmid_t a, vm_mmid_t b){
+	vm_string_t* s1 = MMID_TO_PTR(a, vm_string_t*);
+	vm_string_t* s2 = MMID_TO_PTR(b, vm_string_t*);
+	return (s1->size == s2->size && !memcmp(s1->data, s2->data, s1->size*2));
+}

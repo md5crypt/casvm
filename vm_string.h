@@ -13,4 +13,6 @@ vm_mmid_t vm_string_create(uint8_t* str, uint32_t len, bool constant);
 
 vm_mmid_t vm_string_copy(vm_mmid_t id, bool constant);
 
+uint32_t vm_string_cmp(vm_mmid_t a, vm_mmid_t b);
+
 vm_mmid_t vm_string_intern(vm_mmid_t id);

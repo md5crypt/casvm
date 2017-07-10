@@ -1,16 +1,17 @@
 #include "vm_array.h"
 #include "vm_util.h"
 
-void vm_array_set(vm_mmid_t id, int32_t pos, vm_variable_t value){
+uint32_t vm_array_set(vm_mmid_t id, int32_t pos, vm_variable_t value){
 	vm_array_t* array = MMID_TO_PTR(id, vm_array_t*);
 	if(pos < 0)
 		pos += array->used;
 	if(pos < 0 || (uint32_t)pos >= array->used)
-		vm_throw(VM_OOB_E);
+		return 1;
 	uint32_t index = (pos+array->offset) & (array->size-1);
 	vm_variable_dereference(array->data[index]);
 	array->data[index] = value;
 	vm_variable_reference(value);
+	return 0;
 }
 
 vm_variable_t vm_array_get(vm_mmid_t id, int32_t pos){
@@ -18,7 +19,7 @@ vm_variable_t vm_array_get(vm_mmid_t id, int32_t pos){
 	if(pos < 0)
 		pos += array->used;
 	if(pos < 0 || (uint32_t)pos >= array->used)
-		vm_throw(VM_OOB_E);
+		return (vm_variable_t){.type=VM_INVALID_T};
 	uint32_t index = (pos+array->offset) & (array->size-1);
 	vm_variable_reference(array->data[index]);
 	return array->data[index];

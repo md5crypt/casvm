@@ -68,7 +68,7 @@
     <ClInclude Include="vm_util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vm_object.h">
+    <ClInclude Include="vm_op.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

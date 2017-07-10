@@ -9,3 +9,6 @@
 #define MEMORY_L3_SIZE		256*256
 
 #define STRINGSET_SIZE		1024
+
+#define CALLSTACK_SIZE		1024
+#define STACK_SIZE			256*256

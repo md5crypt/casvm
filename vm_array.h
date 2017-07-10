@@ -9,7 +9,7 @@ typedef struct {
 	vm_variable_t data[0];
 } vm_array_t;
 
-void vm_array_set(vm_mmid_t id, int32_t pos, vm_variable_t value);
+uint32_t vm_array_set(vm_mmid_t id, int32_t pos, vm_variable_t value);
 
 vm_variable_t vm_array_get(vm_mmid_t id, int32_t pos);
 

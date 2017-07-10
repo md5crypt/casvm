@@ -1,9 +1,10 @@
 #pragma once
 
 typedef enum {
-	VM_OOB_E
+	VM_NONE_E,
+	VM_YIELD_E,
+	VM_USER_E,
+	VM_OOB_E,
+	VM_TYPE_E,
+	VM_ARRITY_E
 } vm_exception_t;
-
-static inline void vm_throw(vm_exception_t e){
-	e = e;
-}

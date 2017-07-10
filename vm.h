@@ -2,8 +2,10 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include "vm_type.h"
-#include "vm_exception.h"
 #include "vm_memory.h"
+
+#define VM_ISTYPE(who, what) (vm_type_matrix[VM_TYPE_COUNT*who + what])
+#define VM_CONSTANT 0xFFFFFFFF
 
 typedef struct {
 	vm_type_t type;
@@ -14,8 +16,25 @@ typedef struct {
 	} data;
 } vm_variable_t;
 
-#define VM_ISTYPE(who, what) (vm_type_matrix[VM_TYPE_COUNT*who + what])
-#define VM_CONSTANT 0xFFFFFFFF
+typedef union {
+	uint32_t o32;
+	struct {
+		uint32_t op:8;
+		uint32_t value:24;
+	} o24;
+	struct {
+		uint8_t op;
+		uint8_t type;
+		int16_t value;
+	} o16;
+} vm_opcode_t;
+
+typedef struct {
+	vm_mmid_t context;
+	uint32_t arguments;
+	vm_opcode_t* link;
+	vm_variable_t* base;	
+} vm_stackframe_t;
 
 extern vm_memory_t vm_mem_level_0; //constants
 extern vm_memory_t vm_mem_level_1; //hashmaps

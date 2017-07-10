@@ -9,6 +9,10 @@ typedef struct {
 typedef struct {
 	uint32_t size;
 	uint32_t used;
+	vm_mmid_t name;
+	vm_mmid_t parent;
+	vm_mmid_t super;
+	vm_opcode_t* address;
 	vm_hashmap_pair_t data[0];
 } vm_hashmap_t;
 
