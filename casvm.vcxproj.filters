@@ -39,6 +39,9 @@
     <ClCompile Include="vm_array.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vm_stdlib.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vm.h">

@@ -15,7 +15,7 @@ vm_mmid_t setid;
 
 static uint32_t mkhash(vm_string_t* key){
 	uint32_t h = 0;
-	uint16_t* data = (uint16_t*)key->data;
+	uint16_t* data = key->data;
 	for(uint32_t i = 0; i<key->size; i++)
 		h = 31 * h + data[i];
 	return (h ^ (h >> 20) ^ (h >> 12) ^ (h >> 7) ^ (h >> 4));
@@ -67,12 +67,11 @@ vm_mmid_t vm_string_intern(vm_mmid_t id){
 	return value;
 }
 
-vm_mmid_t vm_string_create(uint8_t* str, uint32_t len, bool constant){
+vm_mmid_t vm_string_create(uint32_t len, bool constant){
 	vm_mmid_t id = vm_memory_allocate(constant?&vm_mem_level_0:&vm_mem_level_3,len*2+sizeof(vm_string_t));
 	vm_string_t* ptr = MMID_TO_PTR(id, vm_string_t*);
 	ptr->size = len;
-	ptr->rcnt = constant?VM_CONSTANT:0;
-	memcpy(ptr->data, str, len*2);
+	ptr->rcnt = constant?VM_CONSTANT:1;
 	return id;
 }
 
@@ -82,9 +81,21 @@ vm_mmid_t vm_string_copy(vm_mmid_t srcid, bool constant){
 	vm_string_t* dst = MMID_TO_PTR(dstid, vm_string_t*);
 	src = MMID_TO_PTR(srcid, vm_string_t*);
 	dst->size = src->size;
-	dst->rcnt = constant?VM_CONSTANT:0;
+	dst->rcnt = constant?VM_CONSTANT:1;
 	memcpy(dst->data, src->data, src->size*2);
 	return dstid;
+}
+
+vm_mmid_t vm_string_concat(vm_mmid_t a, vm_mmid_t b){
+	vm_string_t* s1 = MMID_TO_PTR(a, vm_string_t*);
+	vm_string_t* s2 = MMID_TO_PTR(b, vm_string_t*);
+	vm_mmid_t id = vm_string_create(s1->size+s2->size, false);
+	s1 = MMID_TO_PTR(a, vm_string_t*);
+	s2 = MMID_TO_PTR(b, vm_string_t*);
+	vm_string_t* c = MMID_TO_PTR(id, vm_string_t*);
+	memcpy(c->data, s1->data, s1->size*2);
+	memcpy(c->data+s1->size*2, s2->data, s2->size*2);
+	return id;
 }
 
 uint32_t vm_string_cmp(vm_mmid_t a, vm_mmid_t b){

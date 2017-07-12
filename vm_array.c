@@ -29,7 +29,7 @@ vm_mmid_t vm_array_create(uint32_t size){
 	uint32_t bsize = size<=8?16:npot(size*2);
 	vm_mmid_t id = vm_memory_allocate(&vm_mem_level_2,bsize*sizeof(vm_variable_t)+sizeof(vm_array_t));
 	vm_array_t* ptr = MMID_TO_PTR(id, vm_array_t*);
-	ptr->rcnt = 0;
+	ptr->rcnt = 1;
 	ptr->size = bsize;
 	ptr->used = size;
 	ptr->offset = 0;

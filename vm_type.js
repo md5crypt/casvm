@@ -3,19 +3,16 @@ var fs = require('fs');
 var types = [
 	['VM_INVALID_T',null],
 	['VM_UNDEFINED_T',null],
-	
-	['VM_SCALAR_T',null],
 	['VM_BOOLEAN_T','VM_SCALAR_T'],
 	['VM_INTEGER_T','VM_SCALAR_T'],
 	['VM_FLOAT_T','VM_SCALAR_T'],
-	
-	['VM_VECTOR_T',null],
 	['VM_STRING_T','VM_VECTOR_T'],
 	['VM_ARRAY_T','VM_VECTOR_T'],
-	
-	['VM_OBJECT_T',null],
 	['VM_FUNCTION_T','VM_OBJECT_T'],
-	['VM_NAMESPACE_T','VM_OBJECT_T']
+	['VM_NAMESPACE_T','VM_OBJECT_T'],
+	['VM_SCALAR_T',null],
+	['VM_VECTOR_T',null],
+	['VM_OBJECT_T',null]
 ];
 
 var map = {};
@@ -27,14 +24,16 @@ var enumstr = 'typedef enum {\n'+types.map(o=>'\t'+o[0]).join(',\n')+'\n} vm_typ
 var n = types.length;
 var matrix = new Uint8Array(n*n);
 
-for(var i=0; i<n; i++){
-	matrix[i+i*n] = 1;
-	if(!types[i][1])
-		continue;
-	var b = map[types[i][1]];
-	for(var j=0; j<n; j++)
-		matrix[j+i*n] = matrix[j+b*n];
-	matrix[i+i*n] = 1;
+for(var k=0; k<n; k++){ //haha, I'm lazy
+	for(var i=0; i<n; i++){
+		matrix[i+i*n] = 1;
+		if(!types[i][1])
+			continue;
+		var b = map[types[i][1]];
+		for(var j=0; j<n; j++)
+			matrix[j+i*n] = matrix[j+b*n];
+		matrix[i+i*n] = 1;
+	}
 }
 
 var matrixstr = 'const vm_type_t vm_type_matrix[] = {\n';

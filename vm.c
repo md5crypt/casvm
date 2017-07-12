@@ -3,7 +3,6 @@
 #include "vm_string.h"
 #include "vm_hashmap.h"
 #include "vm_array.h"
-#include "vm_exception.h"
 #include "vm_op.h"
 #include "vm_conf.h"
 
@@ -35,11 +34,12 @@ void vm_init(){
 
 #define ERROR(e) \
 	do{ \
-		vm_state = (vm_state_t){.pc=pc, .top=top, .frame=frame}; \
+		vm_state = (vm_state_t){ .pc=pc, .top=top, .frame=frame }; \
 		return e; \
 	}while(0)
 
 #define ASSERT_TYPE(v,t) if((v)->type != t){ ERROR(VM_TYPE_E); }
+#define SOFT_ASSERT_TYPE(v,t) if(!VM_ISTYPE((v)->type,t)){ ERROR(VM_TYPE_E); }
 
 #define INT_OP(op) \
 	do{ \
@@ -130,12 +130,12 @@ inline static uint32_t eqeq(vm_variable_t* top){
 		vm_variable_dereference(*(top-1));
 		vm_variable_dereference(*(top-2));
 		return 1;
-	} else if((top+0)->type == VM_STRING_T){
+	}else if((top+0)->type == VM_STRING_T){
 		uint32_t r = vm_string_cmp((top+0)->data.m, (top+1)->data.m);
 		vm_variable_dereference(*(top-1));
 		vm_variable_dereference(*(top-2));
 		return r;
-	} else{
+	}else{
 		vm_variable_dereference(*(top-1));
 		vm_variable_dereference(*(top-2));
 		return 0;
@@ -147,18 +147,18 @@ inline static uint32_t eq(vm_variable_t* top){
 		vm_variable_dereference(*(top-1));
 		vm_variable_dereference(*(top-2));
 		return 1;
-	} else if((top+0)->type == VM_STRING_T){
+	}else if((top+0)->type == VM_STRING_T){
 		uint32_t r = vm_string_cmp((top+0)->data.m, (top+1)->data.m);
 		vm_variable_dereference(*(top-1));
 		vm_variable_dereference(*(top-2));
 		return r;
-	} else {
+	}else{
 		if((top-0)->type == VM_BOOLEAN_T || (top-0)->type == VM_INTEGER_T){
 			if((top-1)->type == VM_BOOLEAN_T || (top-1)->type == VM_INTEGER_T)
 				return (top-1)->data.i == (top-0)->data.i;
 			if((top-1)->type == VM_FLOAT_T)
 				return (top-1)->data.f == (top-0)->data.i;
-		} else if((top-0)->type == VM_FLOAT_T){
+		}else if((top-0)->type == VM_FLOAT_T){
 			if((top-1)->type == VM_BOOLEAN_T || (top-1)->type == VM_INTEGER_T)
 				return (top-1)->data.i == (top-0)->data.f;
 			if((top-1)->type == VM_FLOAT_T)
@@ -170,41 +170,65 @@ inline static uint32_t eq(vm_variable_t* top){
 	}
 }
 
-uint32_t vm_run(){
+vm_exception_t vm_run(){
 	vm_stackframe_t* frame = vm_state.frame;
 	vm_opcode_t* pc = vm_state.pc;
 	vm_variable_t* top = vm_state.top;
-	vm_variable_t tmp;
 	while(true){
 		vm_opcode_t opcode = *pc++;
 		switch(opcode.o16.op){
 		case VM_OP_PUSH_VALUE:
-			*(++top) = (vm_variable_t){.type=opcode.o16.type, .data.i=(pc++)->o32};
+			*(++top) = (vm_variable_t){ .type=opcode.o16.type, .data.i=(pc++)->o32 };
 			break;
 		case VM_OP_PUSH_LOCAL:
 			*(++top) = *(frame->base + opcode.o16.value);
 			vm_variable_reference(*top);
 			break;
-		case VM_OP_PUSH_INDEX:
-			ASSERT_TYPE(top-1, VM_ARRAY_T);
-			ASSERT_TYPE(top-0, VM_INTEGER_T);
-			tmp = vm_array_get((top-1)->data.m, (top-0)->data.i);
-			if(tmp.type == VM_INVALID_T)
-				ERROR(VM_OOB_E);
-			top -= 1;
-			vm_variable_dereference(*top);
-			*top = tmp;
+		case VM_OP_PUSH_ARRITY:
+			*(++top) = (vm_variable_t){ .type=VM_INTEGER_T, .data.i=frame->arguments };
 			break;
-		case VM_OP_PUSH_MEMBER_UNSAFE:
-			ASSERT_TYPE(top-1, VM_OBJECT_T);
-			vm_variable_dereference(*(top-1));
-			*(top-1) = vm_hashmap_get((top-1)->data.m, (top-0)->data.i);
-			top -= 1;
+		case VM_OP_PUSH_TYPE:
+			vm_variable_dereference(*top);
+			top->data.i = top->type;
+			top->type = VM_INTEGER_T;
+			break;
+		case VM_OP_PUSH_NAME:
+			SOFT_ASSERT_TYPE(top-1, VM_OBJECT_T);
+			(top+1)->data.m = MMID_TO_PTR(top->data.m, vm_hashmap_t*)->name;
+			(++top)->type = VM_STRING_T;
+			vm_variable_reference(*top);
+			break;
+		case VM_OP_PUSH_PARENT:
+			SOFT_ASSERT_TYPE(top-1, VM_OBJECT_T);
+			*(top+1) = MMID_TO_PTR(top->data.m, vm_hashmap_t*)->parent;
+			top += 1;
+			break;
+		case VM_OP_PUSH_SUPER:
+			SOFT_ASSERT_TYPE(top-1, VM_OBJECT_T);
+			*(top+1) = MMID_TO_PTR(top->data.m, vm_hashmap_t*)->super;
+			top += 1;
 			break;
 		case VM_OP_PUSH_MEMBER:
-			ASSERT_TYPE(top-1, VM_OBJECT_T);
-			ASSERT_TYPE(top-0, VM_STRING_T);
-			*(top-1) = vm_hashmap_get((top-1)->data.m, vm_string_intern((top-0)->data.i));
+			if((top-1)->type == VM_ARRAY_T){
+				ASSERT_TYPE(top-0, VM_INTEGER_T);
+				vm_variable_t tmp = vm_array_get((top-1)->data.m, (top-0)->data.i);
+				if(tmp.type == VM_INVALID_T)
+					ERROR(VM_OOB_E);
+				top -= 1;
+				vm_variable_dereference(*top);
+				*top = tmp;
+			}else if(VM_ISTYPE((top-1)->type, VM_OBJECT_T)){
+				ASSERT_TYPE(top-0, VM_STRING_T);
+				*(top-1) = vm_hashmap_get((top-1)->data.m, vm_string_intern((top-0)->data.i));
+				top -= 1;
+			}else{
+				ERROR(VM_TYPE_E);
+			}
+			break;
+		case VM_OP_PUSH_MEMBER_UNSAFE:
+			SOFT_ASSERT_TYPE(top-1, VM_OBJECT_T);
+			vm_variable_dereference(*(top-1));
+			*(top-1) = vm_hashmap_get((top-1)->data.m, (top-0)->data.i);
 			top -= 1;
 			break;
 		case VM_OP_DEALLOC:
@@ -219,26 +243,28 @@ uint32_t vm_run(){
 			vm_variable_dereference(*(frame->base + opcode.o16.value));
 			*(frame->base + opcode.o16.value) = *(top--);
 			break;
-		case VM_OP_SET_INDEX:
-			ASSERT_TYPE(top-2, VM_ARRAY_T);
-			ASSERT_TYPE(top-1, VM_INTEGER_T);
-			if(vm_array_set((top-2)->data.m, (top-1)->data.i,*(top-0)))
-				ERROR(VM_OOB_E);
-			vm_variable_dereference(*(top-2));
-			vm_variable_dereference(*(top-0));
-			top -= 3;
+		case VM_OP_SET_MEMBER:
+			if((top-1)->type == VM_ARRAY_T){
+				ASSERT_TYPE(top-1, VM_INTEGER_T);
+				if(vm_array_set((top-2)->data.m, (top-1)->data.i,*(top-0)))
+					ERROR(VM_OOB_E);
+				vm_variable_dereference(*(top-2));
+				vm_variable_dereference(*(top-0));
+				top -= 3;
+			}else if(VM_ISTYPE((top-1)->type, VM_OBJECT_T)){
+				ASSERT_TYPE(top-1, VM_STRING_T);
+				vm_hashmap_set((top-2)->data.m, vm_string_intern((top-1)->data.i), *(top-0));
+				vm_variable_dereference(*(top-2));
+				vm_variable_dereference(*(top-0));
+				top -= 3;
+				break;
+			}else{
+				ERROR(VM_TYPE_E);
+			}
 			break;
 		case VM_OP_SET_MEMBER_UNSAFE:
-			ASSERT_TYPE(top-2, VM_OBJECT_T);
+			SOFT_ASSERT_TYPE(top-2, VM_OBJECT_T);
 			vm_hashmap_set((top-2)->data.m, (top-1)->data.i, *(top-0));
-			vm_variable_dereference(*(top-2));
-			vm_variable_dereference(*(top-0));
-			top -= 3;
-			break;
-		case VM_OP_SET_MEMBER:
-			ASSERT_TYPE(top-2, VM_OBJECT_T);
-			ASSERT_TYPE(top-1, VM_STRING_T);
-			vm_hashmap_set((top-2)->data.m, vm_string_intern((top-1)->data.i), *(top-0));
 			vm_variable_dereference(*(top-2));
 			vm_variable_dereference(*(top-0));
 			top -= 3;
@@ -254,17 +280,21 @@ uint32_t vm_run(){
 			if(!VM_ISTYPE(top->type, VM_FUNCTION_T))
 				ERROR(VM_TYPE_E);
 		case VM_OP_CALL_UNSAFE:
-			*(++frame) = (vm_stackframe_t){.context=top->data.m, .arguments=opcode.o16.value, .link=pc, .base=top};
+			*(++frame) = (vm_stackframe_t){ .arguments=opcode.o16.value, .link=pc, .base=top };
 			pc = MMID_TO_PTR(top->data.m, vm_hashmap_t*)->address;
 			break;
-		case VM_OP_CALL_NATIVE:
+		case VM_OP_CALL_NATIVE: {
+			vm_exception_t e = vm_native_api[opcode.o16.value](top, frame);
+			if(e != VM_NONE_E)
+				ERROR(e);
 			break;
+		}
 		case VM_OP_CALL_EXTERNAL:
 			break;
 		case VM_OP_DISPATCH:
 			break;
-		case VM_OP_RET:
-			tmp = *(top--);
+		case VM_OP_RET: {
+			vm_variable_t tmp = *(top--);
 			for(int32_t i = (top - frame->base) + frame->arguments; i > 0; i--)
 				vm_variable_dereference(*(top--));
 			*(++top) = tmp;
@@ -272,6 +302,7 @@ uint32_t vm_run(){
 				return VM_NONE_E;
 			pc = (frame--)->link;
 			break;
+		}
 		case VM_OP_YIELD:
 			ERROR(VM_YIELD_E);
 			break;
@@ -281,6 +312,11 @@ uint32_t vm_run(){
 		case VM_OP_INTERN:
 			ASSERT_TYPE(top-1, VM_STRING_T);
 			(top-1)->data.m = vm_string_intern((top-1)->data.m);
+			break;
+		case VM_OP_CHKTYPE:
+			vm_variable_dereference(*top);
+			top->data.i = VM_ISTYPE(top->type, opcode.o16.type);
+			top->type = VM_BOOLEAN_T;
 			break;
 		case VM_OP_ASSERT_TYPE:
 			if(!VM_ISTYPE((frame->base + opcode.o16.value)->type, opcode.o16.type))
@@ -338,7 +374,16 @@ uint32_t vm_run(){
 			INT_OP(<<);
 			break;
 		case VM_OP_ADD:
-			FLOAT_OP(+);
+			if(top->type == VM_STRING_T){
+				if((top-1)->type != VM_STRING_T)
+					ERROR(VM_TYPE_E);
+				vm_mmid_t s = vm_string_concat((top-1)->data.m, (top-0)->data.m);
+				vm_variable_dereference(*(top-1));
+				vm_variable_dereference(*(top-0));
+				(--top)->data.m = s;
+			}else{
+				FLOAT_OP(+);
+			}
 			break;
 		case VM_OP_SUB:
 			FLOAT_OP(-);
@@ -367,12 +412,31 @@ uint32_t vm_run(){
 		case VM_OP_NEG:
 			if(top->type == VM_INTEGER_T){
 				top->data.i = -top->data.i;
-			} else if(top->type == VM_FLOAT_T){
+			}else if(top->type == VM_FLOAT_T){
 				top->data.f = -top->data.f;
-			} else{
+			}else{
 				ERROR(VM_TYPE_E);
 			}
 			break;
 		}
 	}
+}
+
+void vm_reset(){
+	vm_state.top = vm_stack-1;
+	vm_state.frame = vm_callstack;
+}
+
+void vm_push(vm_variable_t var){
+	vm_variable_reference(var);
+	*(++vm_state.top) = var;
+}
+
+vm_variable_t vm_pop(){
+	return *(vm_state.top--);
+}
+
+void vm_call(vm_mmid_t func){
+	*vm_state.frame = (vm_stackframe_t){ .arguments=vm_state.top-vm_stack+1, .link=NULL, .base=vm_state.top };
+	vm_state.pc = MMID_TO_PTR(func, vm_hashmap_t*)->address;
 }

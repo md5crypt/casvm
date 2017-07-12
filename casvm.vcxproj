@@ -24,6 +24,7 @@
     <ClCompile Include="vm.c" />
     <ClCompile Include="vm_hashmap.c" />
     <ClCompile Include="vm_memory.c" />
+    <ClCompile Include="vm_stdlib.c" />
     <ClCompile Include="vm_string.c" />
     <ClCompile Include="vm_type.c" />
   </ItemGroup>
