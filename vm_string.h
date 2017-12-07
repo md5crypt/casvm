@@ -9,9 +9,13 @@ typedef struct {
 
 void vm_stringset_init(uint32_t size);
 
-vm_mmid_t vm_string_create(uint32_t len, bool constant);
+vm_mmid_t vm_string_create(uint32_t len);
+
+vm_mmid_t vm_string_insert(const uint16_t* data, uint32_t len);
 
 vm_mmid_t vm_string_copy(vm_mmid_t id, bool constant);
+
+vm_variable_t vm_string_get(vm_mmid_t id, int32_t index);
 
 vm_mmid_t vm_string_concat(vm_mmid_t a, vm_mmid_t b);
 

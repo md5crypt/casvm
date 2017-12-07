@@ -29,6 +29,8 @@
     <ClCompile Include="vm_type.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="vm_stdlib.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="vm_op.h" />
     <ClInclude Include="vm.h" />
     <ClInclude Include="vm_array.h" />
@@ -41,13 +43,16 @@
     <ClInclude Include="vm_util.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="vm_type.js" />
+    <CustomBuild Include="codegen.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vm_op.json" />
+    <None Include="vm_type.json" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{A4651D19-6763-4C64-B878-1C0B36885F23}</ProjectGuid>
     <RootNamespace>casvm</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -108,16 +113,17 @@
       <DisableSpecificWarnings>4200;4255;4204%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <ExpandAttributedSource>false</ExpandAttributedSource>
       <AssemblerOutput>NoListing</AssemblerOutput>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
     </Link>
     <CustomBuildStep>
-      <Command>node vm_type.js</Command>
+      <Command>node codegen.js</Command>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>vm_type.c;vm_type.h%(Outputs)</Outputs>
-      <Inputs>vm_type.js%(Inputs)</Inputs>
+      <Outputs>vm_type.c;vm_type.h;vm_op.h%(Outputs)</Outputs>
+      <Inputs>vm_type.json;vm_op.json%(Inputs)</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -143,9 +149,9 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <CustomBuildStep>
-      <Command>node vm_type.js</Command>
-      <Outputs>vm_type.c;vm_type.h%(Outputs)</Outputs>
-      <Inputs>vm_type.js%(Inputs)</Inputs>
+      <Command>node codegen.js</Command>
+      <Outputs>vm_type.c;vm_type.h;vm_op.h%(Outputs)</Outputs>
+      <Inputs>vm_type.json;vm_op.json%(Inputs)</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

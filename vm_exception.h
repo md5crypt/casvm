@@ -6,5 +6,6 @@ typedef enum {
 	VM_USER_E,
 	VM_OOB_E,
 	VM_TYPE_E,
-	VM_ARRITY_E
+	VM_ARRITY_E,
+	VM_INVALID_OP_E
 } vm_exception_t;

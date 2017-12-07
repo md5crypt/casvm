@@ -1,0 +1,17 @@
+[
+    [ "invalid", null ],
+    [ "undefined", null ],
+    [ "boolean", "numeric" ],
+    [ "integer", "numeric" ],
+    [ "float", "numeric" ],
+    [ "string", "vector" ],
+    [ "array", "vector" ],
+    [ "callable", "object" ],
+    [ "function", "callable" ],
+    [ "extern", "callable" ],
+    [ "native", "extern" ],
+    [ "namespace", "object" ],
+    [ "numeric", null ],
+    [ "vector", null ],
+    [ "object", null ]
+]

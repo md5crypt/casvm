@@ -12,10 +12,6 @@
     <Filter Include="Scripts">
       <UniqueIdentifier>{7d95fb53-0e2b-4c5c-a29d-3a8bb316ebe4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -74,10 +70,24 @@
     <ClInclude Include="vm_op.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vm_stdlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="vm_type.js">
+    <None Include="vm_op.json">
       <Filter>Scripts</Filter>
     </None>
+    <None Include="vm_type.json">
+      <Filter>Scripts</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="codegen.js">
+      <Filter>Scripts</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

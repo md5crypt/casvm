@@ -50,6 +50,11 @@ void vm_memmap_init(uint32_t mapsize, uint32_t stacksize);
 void vm_memory_init(vm_memory_t* mem, uint32_t size);
 
 /*
+ * sets mmid offset
+ */
+void vm_memmap_set_offset(uint32_t offset);
+
+/*
  * allocates a block of memory in a given
  * memory space
  */

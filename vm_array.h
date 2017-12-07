@@ -1,6 +1,8 @@
 #pragma once
 #include "vm.h"
 
+#define VM_ARRAY_SIZE_MIN 8
+
 typedef struct {
 	uint32_t rcnt;
 	uint32_t size;

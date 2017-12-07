@@ -22,7 +22,9 @@ static inline uint32_t npot(uint32_t v){
 }
 
 inline static void vm_reference(vm_mmid_t id){
-	MMID_TO_PTR(id, uint32_t*)[0]++;
+	uint32_t* cnt = MMID_TO_PTR(id, uint32_t*);
+	if(cnt[0] != VM_CONSTANT)
+		cnt[0]++;
 }
 
 inline static void vm_dereference(vm_mmid_t id, vm_type_t type){
