@@ -19,18 +19,20 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="vm_thread.c" />
     <ClCompile Include="vm_array.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="vm.c" />
     <ClCompile Include="vm_hashmap.c" />
     <ClCompile Include="vm_memory.c" />
+    <ClCompile Include="vm_mainloop.c" />
     <ClCompile Include="vm_stdlib.c" />
     <ClCompile Include="vm_string.c" />
     <ClCompile Include="vm_type.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="vm_mainloop.h" />
     <ClInclude Include="vm_stdlib.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="vm_op.h" />
     <ClInclude Include="vm.h" />
     <ClInclude Include="vm_array.h" />
@@ -39,6 +41,7 @@
     <ClInclude Include="vm_hashmap.h" />
     <ClInclude Include="vm_memory.h" />
     <ClInclude Include="vm_string.h" />
+    <ClInclude Include="vm_thread.h" />
     <ClInclude Include="vm_type.h" />
     <ClInclude Include="vm_util.h" />
   </ItemGroup>

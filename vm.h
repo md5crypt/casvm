@@ -30,33 +30,71 @@ typedef union {
 	} o16;
 } vm_opcode_t;
 
-typedef struct {
-	uint32_t arguments;
-	const vm_opcode_t* link;
-	vm_variable_t* base;	
-} vm_stackframe_t;
-
 typedef vm_exception_t (*vm_native_t)(vm_variable_t*, uint32_t);
+typedef void (*vm_destructor_t)(void*);
 
-extern vm_memory_t vm_mem_level_0; //constants
-extern vm_memory_t vm_mem_level_1; //hashmaps
-extern vm_memory_t vm_mem_level_2; //arrays
-extern vm_memory_t vm_mem_level_3; //strings
+extern vm_memory_t vm_mem_const;
+extern vm_memory_t vm_mem_hashmap;
+extern vm_memory_t vm_mem_array;
+extern vm_memory_t vm_mem_string;
+extern vm_memory_t vm_mem_thread;
 
 extern const vm_opcode_t* vm_progmem;
 
 void vm_init(uint32_t mmid_offset);
 
-void vm_reset(void);
-
-void vm_push(vm_variable_t var);
-
-vm_variable_t vm_pop(void);
-
-void vm_call(const vm_opcode_t*  address);
-
 bool vm_extern_resolve(vm_mmid_t hashmap, const char* name);
 
+void vm_call(const vm_opcode_t* address);
 vm_exception_t vm_run(void);
 
 extern void vm_stdlib_init(void);
+
+extern const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT];
+
+inline static void vm_make_const(vm_mmid_t id){
+	MMID_TO_PTR(id, uint32_t*)[0] = VM_CONSTANT;
+}
+
+inline static void vm_reference(void* ptr){
+	if(((uint32_t*)ptr)[0] != VM_CONSTANT)
+		((uint32_t*)ptr)[0] += 1;
+}
+
+inline static void vm_reference_m(vm_mmid_t id){
+	uint32_t* cnt = MMID_TO_PTR(id, uint32_t*);
+	if(cnt[0] != VM_CONSTANT)
+		cnt[0]++;
+}
+
+inline static void vm_dereference(void* ptr, vm_type_t type){
+	vm_destructor_t destructor = vm_destructor_lut[type];
+	if(destructor){
+		uint32_t cnt = ((uint32_t*)ptr)[0];
+		if(cnt <= 1)
+			destructor(ptr);
+		else if(cnt != VM_CONSTANT)
+			((uint32_t*)ptr)[0] = cnt-1;
+	}
+}
+
+inline static void vm_dereference_m(vm_mmid_t id, vm_type_t type){
+	vm_destructor_t destructor = vm_destructor_lut[type];
+	if(destructor){
+		void* ptr = MMID_TO_PTR(id, void*);
+		uint32_t cnt = ((uint32_t*)ptr)[0];
+		if(cnt <= 1)
+			destructor(ptr);
+		else if(cnt != VM_CONSTANT)
+			((uint32_t*)ptr)[0] = cnt-1;
+	}
+}
+
+inline static void vm_variable_reference(vm_variable_t v){
+	if(vm_destructor_lut[v.type])
+		vm_reference_m(v.data.i);
+}
+
+inline static void vm_variable_dereference(vm_variable_t v){
+	vm_dereference_m(v.data.m,v.type);
+}

@@ -61,7 +61,7 @@ void vm_memmap_set_offset(uint32_t offset);
 vm_mmid_t vm_memory_allocate(vm_memory_t* mem, uint32_t size);
 
 /*
- * replaces dst with src, frees old dst
+ * replaces dst with src, frees src
  */
 void vm_memory_replace(vm_memory_t* mem, vm_mmid_t dst, vm_mmid_t src);
 

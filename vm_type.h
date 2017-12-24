@@ -1,5 +1,5 @@
 #pragma once
-#define VM_TYPE_COUNT	15
+#define VM_TYPE_COUNT	16
 
 typedef enum {
 	VM_INVALID_T,
@@ -16,7 +16,8 @@ typedef enum {
 	VM_NAMESPACE_T,
 	VM_NUMERIC_T,
 	VM_VECTOR_T,
-	VM_OBJECT_T
+	VM_HASHMAP_T,
+	VM_THREAD_T
 } vm_type_t;
 
 extern const vm_type_t vm_type_matrix[VM_TYPE_COUNT*VM_TYPE_COUNT];

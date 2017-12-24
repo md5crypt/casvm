@@ -38,6 +38,12 @@
     <ClCompile Include="vm_stdlib.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vm_thread.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vm_mainloop.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vm.h">
@@ -70,10 +76,13 @@
     <ClInclude Include="vm_op.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="vm_stdlib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vm_stdlib.h">
+    <ClInclude Include="vm_thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vm_mainloop.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

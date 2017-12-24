@@ -68,7 +68,7 @@ static vm_exception_t lib_typeof(vm_variable_t* top, uint32_t arguments){
 
 static vm_exception_t lib_nameof(vm_variable_t* top, uint32_t arguments){
 	ASSERT_ARRITY(arguments==1);
-	if(!VM_ISTYPE((top-1)->type, VM_OBJECT_T))
+	if(!VM_ISTYPE((top-1)->type, VM_HASHMAP_T))
 		return VM_TYPE_E;
 	top[1] = (vm_variable_t){.type=VM_STRING_T, .data.m=MMID_TO_PTR((top-1)->data.m,vm_hashmap_t*)->name};
 	return VM_NONE_E;
@@ -155,7 +155,7 @@ static vm_exception_t lib_array_push(vm_variable_t* top, uint32_t arguments){
 	ASSERT_TYPE(1,VM_ARRAY_T);
 	vm_mmid_t array = (top-1)->data.m;
 	for(uint32_t i=2; i<=arguments; i++)
-		vm_array_push(array,*(top-i));
+		vm_array_push_m(array,*(top-i));
 	top[1] = *(top-1);
 	vm_variable_reference(top[1]);
 	return VM_NONE_E;
@@ -164,7 +164,7 @@ static vm_exception_t lib_array_push(vm_variable_t* top, uint32_t arguments){
 static vm_exception_t lib_array_pop(vm_variable_t* top, uint32_t arguments){
 	ASSERT_ARRITY(arguments==1);
 	ASSERT_TYPE(1,VM_ARRAY_T);
-	top[1] = vm_array_pop((top-1)->data.m);
+	top[1] = vm_array_pop_m((top-1)->data.m);
 	return VM_NONE_E;
 }
 
@@ -198,6 +198,6 @@ const vm_stdlib_t vm_stdlib[] = {
 void vm_stdlib_init(){
 	for(uint32_t i=0; i<VM_TYPE_COUNT; i++){
 		vm_mmid_t id = ascii_to_string(vm_type_names[i],strlen(vm_type_names[i]));
-		type_string[i] = vm_string_intern(id);
+		type_string[i] = vm_string_intern_m(id);
 	}
 }

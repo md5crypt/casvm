@@ -28,11 +28,11 @@ static void grow(vm_hashmap_t* map){
 			newmap->used++;
 		}
 	}
-	vm_memory_replace(&vm_mem_level_1, PTR_TO_MMID(map), id);
+	vm_memory_replace(&vm_mem_hashmap, PTR_TO_MMID(map), id);
 }
 
 vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mmid_t parent, void* code){
-	vm_mmid_t id = vm_memory_allocate(&vm_mem_level_1,size*sizeof(vm_hashmap_pair_t)+sizeof(vm_hashmap_t));
+	vm_mmid_t id = vm_memory_allocate(&vm_mem_hashmap,size*sizeof(vm_hashmap_pair_t)+sizeof(vm_hashmap_t));
 	vm_hashmap_t* map = MMID_TO_PTR(id,vm_hashmap_t*);
 	memset(((uint8_t*)map)+sizeof(vm_hashmap_t),0,size*sizeof(vm_hashmap_pair_t));
 	map->size = size;
@@ -45,8 +45,7 @@ vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mm
 	return id;
 }
 
-void vm_hashmap_set(vm_mmid_t mapid, vm_mmid_t key, vm_variable_t value){
-	vm_hashmap_t* map = MMID_TO_PTR(mapid,vm_hashmap_t*);
+void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value){
 	vm_hashmap_pair_t* pair = get(map,key);
 	vm_mmid_t id = pair->key;
 	if(id != MMID_NULL && id != THOMBSTONE)
@@ -63,8 +62,8 @@ void vm_hashmap_set(vm_mmid_t mapid, vm_mmid_t key, vm_variable_t value){
 		grow(map);
 }
 
-vm_variable_t vm_hashmap_get(vm_mmid_t mapid, vm_mmid_t key){
-	vm_hashmap_pair_t* pair = get(MMID_TO_PTR(mapid,vm_hashmap_t*),key);
+vm_variable_t vm_hashmap_get(vm_hashmap_t* map, vm_mmid_t key){
+	vm_hashmap_pair_t* pair = get(map,key);
 	if(pair->key == MMID_NULL || pair->key == THOMBSTONE)
 		return (vm_variable_t){.type=VM_UNDEFINED_T};
 	vm_variable_reference(pair->data);
