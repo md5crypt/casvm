@@ -5,7 +5,7 @@
 	((vm_stackframe_t){ \
 		.link=(_link), \
 		.base=(_base), \
-		.arguments_low=((_arguments)&8), \
+		.arguments_low=((_arguments)&0xFF), \
 		.arguments_high=((_arguments)>>8) \
 	})
 

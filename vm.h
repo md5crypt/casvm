@@ -30,6 +30,7 @@ typedef union {
 	} o16;
 } vm_opcode_t;
 
+
 typedef vm_exception_t (*vm_native_t)(vm_variable_t*, uint32_t);
 typedef void (*vm_destructor_t)(void*);
 
@@ -92,7 +93,7 @@ inline static void vm_dereference_m(vm_mmid_t id, vm_type_t type){
 
 inline static void vm_variable_reference(vm_variable_t v){
 	if(vm_destructor_lut[v.type])
-		vm_reference_m(v.data.i);
+		vm_reference_m(v.data.m);
 }
 
 inline static void vm_variable_dereference(vm_variable_t v){

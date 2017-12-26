@@ -26,7 +26,7 @@
 
 #define ERROR(e) \
 	do{ \
-		*((vm_stackframe_t*)(top++)) = CURRENT_STACKFRAME(); \
+		*((vm_stackframe_t*)(++top)) = CURRENT_STACKFRAME(); \
 		if(top >= end) \
 			vm_thread_grow(thread,1); \
 		thread->top = top-bottom; \
@@ -179,6 +179,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 	uint32_t arguments = ((vm_stackframe_t*)top)->arguments_low | (((vm_stackframe_t*)top)->arguments_high<<8); 
 	top -= 1;
 	while(true){
+		//printf("%03X\t%03d\n",pc-vm_progmem,top-bottom);
 		vm_opcode_t opcode = *pc++;
 		switch(opcode.o16.op){
 			case VM_OP_PUSH_VALUE:
@@ -225,7 +226,6 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					if(tmp.type == VM_INVALID_T)
 						ERROR(VM_OOB_E);
 					top -= 1;
-					vm_variable_dereference(*top);
 					*top = tmp;
 				}else{
 					ERROR(VM_TYPE_E);
@@ -246,6 +246,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 				if((uint32_t)top->data.i > arguments)
 					ERROR(VM_OOB_E);
 				*top = *(base - top->data.i - 1);
+				vm_variable_reference(*top);
 				break;
 			case VM_OP_PUSH_ARGUMENT_ARRAY: {
 				const uint32_t diff = arguments - opcode.o24.value;
@@ -275,14 +276,16 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 				for(int32_t i = 0; i < opcode.o24.value; i++)
 					*(++top) = (vm_variable_t){.type=VM_UNDEFINED_T};
 				break;
-			case VM_OP_DUP:
-				vm_variable_reference(*top);
-				*(top+1) = *top;
-				top += 1;
-				if(top >= end)
-					GROW_THREAD(1);
+			case VM_OP_DUP: {
+				vm_variable_t var = *top;
+				if(top+opcode.o24.value >= end)
+					GROW_THREAD(opcode.o24.value-(end-top));
+				for(int32_t i = 0; i < opcode.o24.value; i++){
+					*(++top) = var;
+					vm_variable_reference(var);
+				}
 				break;
-			case VM_OP_SET_LOCAL:
+			} case VM_OP_SET_LOCAL:
 				vm_variable_dereference(*(base + opcode.o24.value));
 				*(base + opcode.o24.value) = *(top--);
 				break;
@@ -373,34 +376,49 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 				vm_stackitem_t* child_top = child->stack;
 				for(vm_variable_t* ptr = top-opcode.o24.value; ptr < top; ptr++)
 					(child_top++)->variable = *ptr;
-				child_top->frame = VM_PACK_STACKFRAME(func->code.address-vm_progmem,0,opcode.o24.value);
-				child->top = (child_top-child->stack)-1;
+				(child_top++)->frame = VM_PACK_STACKFRAME(0,0,0);
+				child_top->frame = VM_PACK_STACKFRAME(func->code.address-vm_progmem,opcode.o24.value,opcode.o24.value);
+				child->top = child_top-child->stack;
 				vm_thread_push(child);
+				vm_reference(child);
 				*top = (vm_variable_t){.type=VM_THREAD_T, .data.m=child_id};
 				break;
 			} case VM_OP_WAIT:{
 				ASSERT_TYPE(top, VM_THREAD_T);
 				vm_thread_t* child = MMID_TO_PTR(top->data.m, vm_thread_t*);
 				if(child->state == VM_THREAD_STATE_FINISHED){
-					vm_dereference(child,VM_THREAD_T);
 					*top = child->stack->variable;
 					vm_variable_reference(*top);
+					vm_dereference(child,VM_THREAD_T);
 				}else{	
 					pc -= 1;
 					vm_thread_wait(thread,child);
 					ERROR(VM_YIELD_E);
 				}
+				break;
 			} case VM_OP_RET: {
 				for(vm_variable_t* ptr = top-1; ptr > base; ptr--)
 					vm_variable_dereference(*ptr);
 				for(vm_variable_t* ptr = base-arguments; ptr < base; ptr++)
 					vm_variable_dereference(*ptr);
-				vm_stackframe_t* frame = (vm_stackframe_t*)base;
-				vm_variable_t ret = *top;
-				if(frame->base == 0){
-					*bottom = ret;
+				if(base - arguments == bottom){
+					*bottom = *top;
+					thread->top = 0;
+					thread->state = VM_THREAD_STATE_FINISHED;
+					if(thread->queue){
+						vm_thread_push_m(thread->queue);
+						thread->queue = MMID_NULL;
+					}
 					return VM_NONE_E;
 				}
+				vm_stackframe_t* frame = (vm_stackframe_t*)base;
+				vm_variable_t ret = *top;
+				top = base - arguments;
+				base = bottom + frame->base;
+				pc = vm_progmem + frame->link;
+				arguments = frame->arguments_low | (frame->arguments_high<<8);
+				*top = ret;
+				break;
 			}
 			case VM_OP_YIELD:
 				ERROR(VM_YIELD_E);
@@ -437,7 +455,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					for(uint32_t i=0; i<diff; i++)
 						*(top-arguments-i) = (vm_variable_t){ .type=VM_UNDEFINED_T, .data.i=0 };
 					top += diff;
-					base = top;
+					base += diff;
 					arguments = opcode.o24.value;
 				}else if(arguments != (uint32_t)opcode.o24.value){
 					ERROR(VM_ARRITY_E);

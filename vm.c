@@ -58,8 +58,9 @@ void vm_call(const vm_opcode_t* address){
 	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
 	if(thread->state == VM_THREAD_STATE_FINISHED)
 		vm_variable_dereference(thread->stack->variable);
-	thread->stack[0].frame = VM_PACK_STACKFRAME(address-vm_progmem,0,0);
-	thread->top = 0;
+	thread->stack[0].frame = VM_PACK_STACKFRAME(0,0,0);
+	thread->stack[1].frame = VM_PACK_STACKFRAME(address-vm_progmem,0,0);
+	thread->top = 1;
 	thread->state = VM_THREAD_STATE_PAUSED;
 	vm_thread_push(thread);
 }
@@ -71,7 +72,7 @@ vm_exception_t vm_run(){
 			return VM_NONE_E;
 		vm_exception_t e = vm_mainloop(thread_id);
 		vm_dereference_m(thread_id,VM_THREAD_T);
-		if(e != VM_YIELD_E)
+		if(e != VM_YIELD_E && e != VM_NONE_E)
 			return e;
 	}
 }
