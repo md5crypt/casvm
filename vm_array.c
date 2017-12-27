@@ -1,16 +1,17 @@
 #include "vm_array.h"
 #include "vm_util.h"
+#include "vm_conf.h"
 
-uint32_t vm_array_set(vm_array_t* array, int32_t pos, vm_variable_t value){
+vm_array_t* vm_array_set(vm_array_t* array, int32_t pos, vm_variable_t value){
 	if(pos < 0)
 		pos += array->used;
 	if(pos < 0 || (uint32_t)pos >= array->used)
-		return 1;
+		return NULL;
 	uint32_t index = (pos+array->offset) & (array->size-1);
 	vm_variable_dereference(array->data[index]);
 	array->data[index] = value;
 	vm_variable_reference(value);
-	return 0;
+	return array;
 }
 
 vm_variable_t vm_array_get(vm_array_t* array, int32_t pos){
@@ -64,46 +65,105 @@ vm_mmid_t vm_array_slice(vm_array_t* array, int32_t start, int32_t stop){
 	return dstid;
 }
 
-vm_mmid_t vm_array_concat_m(vm_mmid_t a, vm_mmid_t b){
-	vm_array_t* A = MMID_TO_PTR(a,vm_array_t*);
-	vm_array_t* B = MMID_TO_PTR(b,vm_array_t*);
-	vm_array_t* C;
-	vm_mmid_t c = vm_array_create(A->used+B->used);
-	A = MMID_TO_PTR(a,vm_array_t*);
-	B = MMID_TO_PTR(b,vm_array_t*);
-	C = MMID_TO_PTR(c,vm_array_t*);
-	uint32_t offset = A->offset;
-	vm_variable_t* ptr = C->data;
-	for(uint32_t i=0; i<A->used; i++){
-		*ptr = A->data[(offset++)&(A->size-1)];
-		vm_variable_reference((*ptr++));
-	}
-	offset = B->offset;
-	for(uint32_t i=0; i<B->used; i++){
-		*ptr = B->data[(offset++)&(B->size-1)];
-		vm_variable_reference((*ptr++));
-	}
-	C->used = A->used+B->used;
-	return c;
-}
-
-void vm_array_grow(vm_array_t* array){
+static vm_array_t* grow(vm_array_t* array, uint32_t newsize){
 	vm_mmid_t oldid = PTR_TO_MMID(array);
-	vm_mmid_t newid = vm_array_create(array->size*2);
+	vm_mmid_t newid = vm_array_create(newsize?newsize:array->size*2);
 	vm_array_t* oldptr = MMID_TO_PTR(oldid,vm_array_t*);
 	vm_array_t* newptr = MMID_TO_PTR(newid,vm_array_t*);
-	*newptr = *oldptr;
+	newptr->rcnt = oldptr->rcnt;
+	newptr->used = oldptr->used;
 	uint32_t offset = oldptr->offset;
 	for(uint32_t i=0; i<oldptr->used; i++)
 		newptr->data[i] = oldptr->data[(offset++)&(oldptr->size-1)];
 	vm_memory_replace(&vm_mem_array, oldid, newid);
+	return newptr;
 }
 
-void vm_array_push(vm_array_t* array, vm_variable_t value){
+vm_array_t* vm_array_resize(vm_array_t* array, uint32_t size){
+	if(array->size < size)
+		array = grow(array,size);
+	uint32_t offset = (array->offset + array->used)&(array->size-1);
+	if(array->used > size){
+		uint32_t diff = array->used - size;
+		while(diff--)
+			vm_variable_reference(array->data[(--offset)&(array->size-1)]);
+	}else{
+		uint32_t diff = size-array->used;
+		while(diff--)
+			array->data[(offset++)&(array->size-1)].type = VM_UNDEFINED_T;
+	}
+	array->used = size;
+	return array;
+}
+
+vm_array_t* vm_array_push(vm_array_t* array, vm_variable_t value){
+	vm_variable_reference(value);
 	array->data[((array->used++)+array->offset)&(array->size-1)] = value;
 	if(array->used == array->size)
-		vm_array_grow(array);
-	vm_variable_reference(value);
+		return grow(array,0);
+	return array;
+}
+
+vm_array_t* vm_array_write(vm_array_t* dst, vm_array_t* src, int32_t offset, int32_t len){
+	if(offset < 0)
+		offset += dst->used;
+	if(len < 0)
+		len += src->used;
+	if(dst->used < (uint32_t)(offset+len) || len < 0 || offset < 0 || (uint32_t)offset > dst->used)
+		return NULL;
+	uint32_t offset_dst = dst->offset + offset;
+	uint32_t offset_src = src->offset;
+	while(len--){
+		vm_variable_t var = src->data[(offset_src++)&(src->size-1)];
+		vm_variable_reference(var);
+		dst->data[(offset_dst++)&(dst->size-1)] = var;
+	}
+	return dst;
+}
+
+vm_array_t* vm_array_fill(vm_array_t* array, vm_variable_t var, int32_t offset, int32_t len){
+	if(offset < 0)
+		offset += array->used;
+	if(len < 0)
+		len += array->used;
+	if(array->used < (uint32_t)(offset+len) || len < 0 || offset < 0 || (uint32_t)offset > array->used)
+		return NULL;
+	offset = array->offset + offset;
+	while(len--){
+		vm_variable_dereference(array->data[offset&(array->size-1)]);
+		array->data[offset&(array->size-1)] = var;
+		vm_variable_reference(var);
+		offset += 1;
+	}
+	return array;
+}
+
+void vm_array_reverse(vm_array_t* array){
+	uint32_t left = array->offset;
+	uint32_t right = array->offset + array->used - 1;
+	uint32_t cnt = array->used>>1;
+	while(cnt--){
+		vm_variable_t var = array->data[left&(array->size-1)];
+		array->data[left&(array->size-1)] = array->data[right&(array->size-1)];
+		array->data[right&(array->size-1)] = var;
+		left += 1;
+		right -= 1;
+	}
+}
+
+int32_t vm_array_find(vm_array_t* array, vm_variable_t var, int32_t offset){
+	if(offset < 0)
+		offset += array->used;
+	if(offset < 0 || (uint32_t)offset >= array->used)
+		return -2;
+	uint32_t cnt = array->used - offset;
+	offset += array->offset;
+	while(cnt--){
+		if(vm_variable_compare(var,array->data[offset&(array->size-1)]))
+			return offset;
+		offset += 1;
+	}
+	return -1;
 }
 
 vm_variable_t vm_array_pop(vm_array_t* array){
@@ -112,11 +172,12 @@ vm_variable_t vm_array_pop(vm_array_t* array){
 	return array->data[((--array->used)+array->offset)&(array->size-1)];
 }
 
-void vm_array_unshift(vm_array_t* array, vm_variable_t value){
+vm_array_t* vm_array_unshift(vm_array_t* array, vm_variable_t value){
+	vm_variable_reference(value);
 	array->data[(--array->offset)&(array->size-1)] = value;
 	if(++array->used == array->size)
-		vm_array_grow(array);
-	vm_variable_reference(value);
+		return grow(array,0);
+	return array;
 }
 
 vm_variable_t vm_array_shift(vm_array_t* array){
@@ -125,4 +186,3 @@ vm_variable_t vm_array_shift(vm_array_t* array){
 	array->used -= 1;
 	return array->data[(array->offset++)&(array->size-1)];
 }
-

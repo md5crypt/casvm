@@ -20,8 +20,7 @@
 
 #define GROW_THREAD(amount) \
 	do{ \
-		vm_thread_grow(thread,(amount)); \
-		RELOAD_THREAD(MMID_TO_PTR(thread_id,vm_thread_t*)); \
+		RELOAD_THREAD(vm_thread_grow(thread,(amount))); \
 	}while(0)
 
 #define ERROR(e) \
@@ -123,48 +122,53 @@ inline static uint32_t test(vm_variable_t* top){
 }
 
 inline static uint32_t eqeq(vm_variable_t* top){
-	if((top+0)->type == (top+1)->type && (top+0)->data.i == (top+1)->data.i){
+	if((top+0)->type != (top+1)->type){
+		vm_variable_dereference(*(top-0));
 		vm_variable_dereference(*(top-1));
-		vm_variable_dereference(*(top-2));
-		return 1;
-	}else if((top+0)->type == VM_STRING_T){
-		uint32_t r = vm_string_cmp_m((top+0)->data.m, (top+1)->data.m);
-		vm_variable_dereference(*(top-1));
-		vm_variable_dereference(*(top-2));
-		return r;
-	}else{
-		vm_variable_dereference(*(top-1));
-		vm_variable_dereference(*(top-2));
 		return 0;
 	}
+	if((top+0)->data.i == (top+1)->data.i){
+		vm_variable_dereference(*(top-0));
+		vm_variable_dereference(*(top-1));
+		return 1;
+	}
+	if((top+0)->type == VM_STRING_T){
+		uint32_t r = vm_string_cmp(VM_CAST_STRING(top-0), VM_CAST_STRING(top-1));
+		vm_variable_dereference(*(top-0));
+		vm_variable_dereference(*(top-1));
+		return r;
+	}
+	vm_variable_dereference(*(top-0));
+	vm_variable_dereference(*(top-1));
+	return 0;
 }
 
 inline static uint32_t eq(vm_variable_t* top){
 	if((top+0)->type == (top-1)->type && (top-0)->data.i == (top-1)->data.i){
+		vm_variable_dereference(*(top-0));
 		vm_variable_dereference(*(top-1));
-		vm_variable_dereference(*(top-2));
 		return 1;
-	}else if((top-0)->type == VM_STRING_T){
-		uint32_t r = vm_string_cmp_m((top-0)->data.m, (top-1)->data.m);
-		vm_variable_dereference(*(top-1));
-		vm_variable_dereference(*(top-2));
-		return r;
-	}else{
-		if((top-0)->type == VM_BOOLEAN_T || (top-0)->type == VM_INTEGER_T){
-			if((top-1)->type == VM_BOOLEAN_T || (top-1)->type == VM_INTEGER_T)
-				return (top-1)->data.i == (top-0)->data.i;
-			if((top-1)->type == VM_FLOAT_T)
-				return (top-1)->data.f == (top-0)->data.i;
-		}else if((top-0)->type == VM_FLOAT_T){
-			if((top-1)->type == VM_BOOLEAN_T || (top-1)->type == VM_INTEGER_T)
-				return (top-1)->data.i == (top-0)->data.f;
-			if((top-1)->type == VM_FLOAT_T)
-				return (top-1)->data.f == (top-0)->data.f;
-		}
-		vm_variable_dereference(*(top-1));
-		vm_variable_dereference(*(top-2));
-		return 0;
 	}
+	if((top-0)->type == VM_STRING_T && (top-1)->type == VM_STRING_T){
+		uint32_t r = vm_string_cmp(VM_CAST_STRING(top-0), VM_CAST_STRING(top-1));
+		vm_variable_dereference(*(top-0));
+		vm_variable_dereference(*(top-1));
+		return r;
+	}
+	if((top-0)->type == VM_BOOLEAN_T || (top-0)->type == VM_INTEGER_T){
+		if((top-1)->type == VM_BOOLEAN_T || (top-1)->type == VM_INTEGER_T)
+			return (top-1)->data.i == (top-0)->data.i;
+		if((top-1)->type == VM_FLOAT_T)
+			return (top-1)->data.f == (top-0)->data.i;
+	}else if((top-0)->type == VM_FLOAT_T){
+		if((top-1)->type == VM_BOOLEAN_T || (top-1)->type == VM_INTEGER_T)
+			return (top-1)->data.i == (top-0)->data.f;
+		if((top-1)->type == VM_FLOAT_T)
+			return (top-1)->data.f == (top-0)->data.f;
+	}
+	vm_variable_dereference(*(top-0));
+	vm_variable_dereference(*(top-1));
+	return 0;
 }
 
 vm_exception_t vm_mainloop(vm_mmid_t thread_id){
@@ -179,7 +183,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 	uint32_t arguments = ((vm_stackframe_t*)top)->arguments_low | (((vm_stackframe_t*)top)->arguments_high<<8); 
 	top -= 1;
 	while(true){
-		//printf("%03X\t%03d\n",pc-vm_progmem,top-bottom);
+		// printf("%03X\t%03d\n",pc-vm_progmem,top-bottom);
 		vm_opcode_t opcode = *pc++;
 		switch(opcode.o16.op){
 			case VM_OP_PUSH_VALUE:
@@ -210,7 +214,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 			case VM_OP_PUSH_MEMBER:
 				if((top-1)->type == VM_ARRAY_T){
 					ASSERT_TYPE(top-0, VM_INTEGER_T);
-					vm_variable_t tmp = vm_array_get_m((top-1)->data.m, (top-0)->data.i);
+					vm_variable_t tmp = vm_array_get(VM_CAST_ARRAY(top-1), top[0].data.i);
 					if(tmp.type == VM_INVALID_T)
 						ERROR(VM_OOB_E);
 					top -= 1;
@@ -218,11 +222,11 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					*top = tmp;
 				}else if(VM_ISTYPE((top-1)->type, VM_HASHMAP_T)){
 					ASSERT_TYPE(top-0, VM_STRING_T);
-					*(top-1) = vm_hashmap_get_m((top-1)->data.m, vm_string_intern_m((top-0)->data.i));
+					top[-1] = vm_hashmap_get(VM_CAST_HASHMAP(top-1), vm_string_intern(VM_CAST_STRING(top-0)));
 					top -= 1;
 				}else if((top-1)->type == VM_STRING_T){
 					ASSERT_TYPE(top-0, VM_INTEGER_T);
-					vm_variable_t tmp = vm_string_get_m((top-1)->data.m, (top-0)->data.i);
+					vm_variable_t tmp = vm_string_get(VM_CAST_STRING(top-1), top[0].data.i);
 					if(tmp.type == VM_INVALID_T)
 						ERROR(VM_OOB_E);
 					top -= 1;
@@ -234,12 +238,12 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 			case VM_OP_PUSH_MEMBER_UNSAFE:
 				SOFT_ASSERT_TYPE(top-1, VM_HASHMAP_T);
 				vm_variable_dereference(*(top-1));
-				*(top-1) = vm_hashmap_get_m((top-1)->data.m, (top-0)->data.i);
+				top[-1] = vm_hashmap_get(VM_CAST_HASHMAP(top-1), (top-0)->data.i);
 				top -= 1;
 				break;
 			case VM_OP_PUSH_MEMBER_CONST:
 				vm_variable_dereference(*top);
-				*top = vm_hashmap_get_m(top->data.m, opcode.o24.value);
+				top[0] = vm_hashmap_get(VM_CAST_HASHMAP(top-0), opcode.o24.value);
 				break;
 			case VM_OP_PUSH_ARGUMENT:
 				ASSERT_TYPE(top, VM_INTEGER_T);
@@ -292,14 +296,14 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 			case VM_OP_SET_MEMBER:
 				if((top-1)->type == VM_ARRAY_T){
 					ASSERT_TYPE(top-0, VM_INTEGER_T);
-					if(vm_array_set_m((top-1)->data.m, (top-0)->data.i,*(top-2)))
+					if(!vm_array_set(VM_CAST_ARRAY(top-1),top[0].data.i,top[-2]))
 						ERROR(VM_OOB_E);
 					vm_variable_dereference(*(top-0));
 					vm_variable_dereference(*(top-1));
 					top -= 3;
 				}else if(VM_ISTYPE((top-1)->type, VM_HASHMAP_T)){
 					ASSERT_TYPE(top-0, VM_STRING_T);
-					vm_hashmap_set_m((top-1)->data.m, vm_string_intern_m((top-0)->data.i), *(top-2));
+					vm_hashmap_set(VM_CAST_HASHMAP(top-1), vm_string_intern(VM_CAST_STRING(top-0)), top[-2]);
 					vm_variable_dereference(*(top-0));
 					vm_variable_dereference(*(top-1));
 					top -= 3;
@@ -310,13 +314,13 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 				break;
 			case VM_OP_SET_MEMBER_UNSAFE:
 				SOFT_ASSERT_TYPE(top-1, VM_HASHMAP_T);
-				vm_hashmap_set_m((top-1)->data.m, (top-0)->data.i, *(top-2));
+				vm_hashmap_set(VM_CAST_HASHMAP(top-1), top[0].data.i, top[-2]);
 				vm_variable_dereference(*(top-0));
 				vm_variable_dereference(*(top-1));
 				top -= 3;
 				break;
 			case VM_OP_SET_MEMBER_CONST:
-				vm_hashmap_set_m((top-0)->data.m, opcode.o24.value, *(top-1));
+				vm_hashmap_set(VM_CAST_HASHMAP(top-0), opcode.o24.value, top[-1]);
 				vm_variable_dereference(*(top-0));
 				top -= 2;
 				break;
@@ -343,7 +347,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 							ERROR(e);
 						for(int32_t i = 0; i < opcode.o24.value; i++)
 							vm_variable_dereference(*(top-i-1));
-						*(top-opcode.o24.value) = *(top+1);
+						*(top-opcode.o24.value) = top[1];
 						top -= opcode.o24.value;
 					}else{
 						ERROR(VM_TYPE_E);
@@ -406,7 +410,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					thread->top = 0;
 					thread->state = VM_THREAD_STATE_FINISHED;
 					if(thread->queue){
-						vm_thread_push_m(thread->queue);
+						vm_thread_push(MMID_TO_PTR(thread->queue,vm_thread_t*));
 						thread->queue = MMID_NULL;
 					}
 					return VM_NONE_E;
@@ -508,7 +512,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 				if(top->type == VM_STRING_T){
 					if((top-1)->type != VM_STRING_T)
 						ERROR(VM_TYPE_E);
-					vm_mmid_t s = vm_string_concat_m((top-1)->data.m, (top-0)->data.m);
+					vm_mmid_t s = vm_string_concat(VM_CAST_STRING(top-1), VM_CAST_STRING(top-0));
 					vm_variable_dereference(*(top-1));
 					vm_variable_dereference(*(top-0));
 					(--top)->data.m = s;

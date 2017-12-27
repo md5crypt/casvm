@@ -125,8 +125,8 @@
       <Command>node codegen.js</Command>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>vm_type.c;vm_type.h;vm_op.h%(Outputs)</Outputs>
-      <Inputs>vm_type.json;vm_op.json%(Inputs)</Inputs>
+      <Outputs>vm_type.c;vm_type.h;vm_op.h;vm_stdlib_exports.h%(Outputs)</Outputs>
+      <Inputs>vm_type.json;vm_op.json;vm_stdlib.c%(Inputs)</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

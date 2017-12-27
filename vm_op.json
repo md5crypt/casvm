@@ -38,7 +38,7 @@
 	"bxor",
 	"band",
 	"eq",
-	"eqeq",
+  "eqeq",
 	"neq",
 	"neqneq",
 	"gt",

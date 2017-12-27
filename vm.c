@@ -65,6 +65,16 @@ void vm_call(const vm_opcode_t* address){
 	vm_thread_push(thread);
 }
 
+uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b){
+	if(a.type != b.type)
+		return 0;
+	if(a.data.i == b.data.i)
+		return 1;
+	if(a.type == VM_STRING_T)
+		return vm_string_cmp(VM_CAST_STRING(&a),VM_CAST_STRING(&b));
+	return 0;
+}
+
 vm_exception_t vm_run(){
 	while(true){
 		vm_mmid_t thread_id = vm_thread_pop();

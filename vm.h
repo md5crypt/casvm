@@ -45,7 +45,7 @@ extern const vm_opcode_t* vm_progmem;
 void vm_init(uint32_t mmid_offset);
 
 bool vm_extern_resolve(vm_mmid_t hashmap, const char* name);
-
+uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b);
 void vm_call(const vm_opcode_t* address);
 vm_exception_t vm_run(void);
 

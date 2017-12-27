@@ -26,21 +26,26 @@ vm_mmid_t vm_thread_create(uint32_t size){
 	return id;
 }
 
-void vm_thread_grow(vm_thread_t* thread, uint32_t amount){
+vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount){
 	vm_mmid_t oldid = PTR_TO_MMID(thread);
 	vm_mmid_t newid = vm_thread_create(thread->size < amount ? thread->size+amount : thread->size*2);
 	vm_thread_t* oldptr = MMID_TO_PTR(oldid,vm_thread_t*);
 	vm_thread_t* newptr = MMID_TO_PTR(newid,vm_thread_t*);
-	*newptr = *oldptr;
+	newptr->rcnt = oldptr->rcnt;
+	newptr->top = oldptr->top;
+	newptr->next = oldptr->next;
+	newptr->queue = oldptr->queue;
+	newptr->state = oldptr->state;
 	memcpy(newptr->stack,oldptr->stack,sizeof(vm_variable_t)*oldptr->size);
 	vm_memory_replace(&vm_mem_array, oldid, newid);
+	return thread;
 }
 
 void vm_thread_kill(vm_thread_t* thread){
 	if(thread->state == VM_THREAD_STATE_FINISHED)
 		return;
 	if(thread->queue != MMID_NULL){
-		vm_thread_push_m(thread->queue);
+		vm_thread_push(MMID_TO_PTR(thread->queue,vm_thread_t*));
 		thread->queue = MMID_NULL;
 	}
 	vm_stackitem_t* ptr = thread->stack+thread->top;

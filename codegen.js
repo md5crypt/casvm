@@ -1,3 +1,4 @@
+/*eslint semi: ["error", "never"]*/
 const fs = require('fs')
 
 const types = require('./vm_type.json')
@@ -34,4 +35,10 @@ fs.writeFileSync('vm_type.h',`#pragma once\n#define VM_TYPE_COUNT\t${n}\n\n${typ
 console.log("codegen.js: creating vm_type.c")
 fs.writeFileSync('vm_type.c', `#include "vm_type.h"\n\n${typeMatrix}\n\n${typeNames}\n`)
 console.log("codegen.js: creating vm_op.h")
-fs.writeFileSync('vm_op.h', `#pragma once\n\ntypedef enum {\n${require('./vm_op.json').map(x => '\tVM_OP_'+x.toUpperCase()).join(',\n')}\n} vm_op_t;\n`)
+fs.writeFileSync('vm_op.h', `#pragma once\n\ntypedef enum {\n${require('./vm_op.json').map(x => '\tVM_OP_' + x.toUpperCase()).join(',\n')}\n} vm_op_t;\n`)
+console.log("codegen.js: creating vm_stdlib_exports.h")
+const data = fs.readFileSync('vm_stdlib.c', 'utf-8')
+    .match(/^static\s*vm_exception_t\s*lib_[^(]+\([^{\n]+{$/gm)
+    .map(x => x.match(/lib_([^(\s]+)/)[1])
+    .map(x => `\t{"__${x}",lib_${x}},`).join('\n');
+fs.writeFileSync('vm_stdlib_exports.h', `const vm_stdlib_t vm_stdlib[] = {\n${data}\n\t{NULL,NULL}\n};\n`)

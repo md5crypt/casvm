@@ -50,10 +50,9 @@ void vm_stringset_init(uint32_t size){
 	set->used = 0;
 }
 
-vm_mmid_t vm_string_intern_m(vm_mmid_t id){
-	vm_string_t* str = MMID_TO_PTR(id, vm_string_t*);
+vm_mmid_t vm_string_intern(vm_string_t* str){
 	if(str->rcnt == VM_CONSTANT)
-		return id;
+		return PTR_TO_MMID(str);
 	uint32_t key = get(str);
 	vm_mmid_t value = set->data[key];
 	if(value == MMID_NULL){
@@ -62,7 +61,7 @@ vm_mmid_t vm_string_intern_m(vm_mmid_t id){
 		if(set->used++ > (set->size>>1))
 			grow();
 	}
-	vm_dereference_m(id,VM_STRING_T);
+	vm_dereference(str,VM_STRING_T);
 	return value;
 }
 
@@ -109,13 +108,13 @@ vm_mmid_t vm_string_slice(vm_string_t* string, int32_t start, int32_t stop){
 	vm_mmid_t dstid = vm_string_create(size);
 	vm_string_t* src = MMID_TO_PTR(srcid, vm_string_t*);
 	vm_string_t* dst = MMID_TO_PTR(dstid, vm_string_t*);
-	memcpy(dst->data,src->data+start*sizeof(uint16_t),size*sizeof(uint16_t));
+	memcpy(dst->data,src->data+start,size*sizeof(uint16_t));
 	return dstid;
 }
 
-vm_mmid_t vm_string_concat_m(vm_mmid_t a, vm_mmid_t b){
-	vm_string_t* s1 = MMID_TO_PTR(a, vm_string_t*);
-	vm_string_t* s2 = MMID_TO_PTR(b, vm_string_t*);
+vm_mmid_t vm_string_concat(vm_string_t* s1, vm_string_t* s2){
+	vm_mmid_t a = PTR_TO_MMID(s1);
+	vm_mmid_t b = PTR_TO_MMID(s2);
 	vm_mmid_t id = vm_string_create(s1->size+s2->size);
 	s1 = MMID_TO_PTR(a, vm_string_t*);
 	s2 = MMID_TO_PTR(b, vm_string_t*);
@@ -131,14 +130,6 @@ uint32_t vm_string_cmp(vm_string_t* a, vm_string_t* b){
 	return (a->size == b->size && !memcmp(a->data, b->data, a->size*2));
 }
 
-uint32_t vm_string_cmp_m(vm_mmid_t a, vm_mmid_t b){
-	if(a == b)
-		return 1;
-	vm_string_t* s1 = MMID_TO_PTR(a, vm_string_t*);
-	vm_string_t* s2 = MMID_TO_PTR(b, vm_string_t*);
-	return (s1->size == s2->size && !memcmp(s1->data, s2->data, s1->size*2));
-}
-
 vm_variable_t vm_string_get(vm_string_t* str, int32_t index){
 	if(index < 0)
 		index += str->size;
@@ -149,6 +140,23 @@ vm_variable_t vm_string_get(vm_string_t* str, int32_t index){
 	vm_string_t* outstr = MMID_TO_PTR(outid, vm_string_t*);
 	outstr->data[0] = c;
 	return (vm_variable_t){.type=VM_STRING_T,.data.m=outid};
+}
+
+int32_t vm_string_find(vm_string_t* str, vm_string_t* needle, int32_t offset){
+	if(offset < 0)
+		offset += str->size;
+	if(offset < 0 || (uint32_t)offset >= str->size)
+		return -2;
+	if(needle->size == 0)
+		return -1;
+	uint16_t c = needle->data[0];
+	for(uint32_t i = offset; i <= str->size-needle->size; i++){
+		if(str->data[i] == c){
+			if(needle->size == 1 || !memcmp(str->data+i,needle->data,needle->size*sizeof(uint16_t)))
+				return i;
+		}
+	}
+	return -1;
 }
 
 void vm_string_free(vm_string_t* str){

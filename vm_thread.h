@@ -9,6 +9,8 @@
 		.arguments_high=((_arguments)>>8) \
 	})
 
+#define VM_CAST_THREAD(var) MMID_TO_PTR((var)->data.m,vm_thread_t*)
+
 typedef struct {
 	uint32_t link : 24;
 	uint32_t arguments_low : 8;
@@ -39,12 +41,8 @@ typedef struct {
 vm_mmid_t vm_thread_create(uint32_t size);
 vm_mmid_t vm_thread_pop(void);
 
-void vm_thread_grow(vm_thread_t* thread, uint32_t amount);
+vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount);
 void vm_thread_wait(vm_thread_t* thread, vm_thread_t* queue);
 void vm_thread_free(vm_thread_t* thread);
 void vm_thread_push(vm_thread_t* thread);
 void vm_thread_kill(vm_thread_t* thread);
-
-static inline void vm_thread_push_m(vm_mmid_t id){
-	vm_thread_push(MMID_TO_PTR(id,vm_thread_t*));
-}
