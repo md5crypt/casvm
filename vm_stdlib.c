@@ -11,6 +11,7 @@
 
 #define ASSERT_ARRITY(cond) if(!(cond)){ return VM_ARRITY_E; }
 #define ASSERT_TYPE(n,t) if((top-(n))->type != t){ return VM_TYPE_E; }
+#define ASSERT_TYPE_WEAK(n,t) if(!VM_ISTYPE((top-(n))->type,t)){ return VM_TYPE_E; }
 
 #define THROW(str) do{ top[1] = cstring("Negative array size"); return VM_USER_E; } while(0)
 
@@ -46,6 +47,14 @@ static vm_variable_t cstring(const char* cstr){
 	};
 }
 
+void vm_stdlib_init(){
+	for(uint32_t i=0; i<VM_TYPE_COUNT; i++){
+		vm_mmid_t id = ascii_to_string(vm_type_names[i],strlen(vm_type_names[i]));
+		type_string[i] = vm_string_intern(MMID_TO_PTR(id,vm_string_t*));
+	}
+}
+
+
 static vm_exception_t lib_itos(vm_variable_t* top, uint32_t arguments){
 	ASSERT_ARRITY(arguments==1);
 	ASSERT_TYPE(1,VM_INTEGER_T);
@@ -71,6 +80,36 @@ static vm_exception_t lib_nameof(vm_variable_t* top, uint32_t arguments){
 	if(!VM_ISTYPE((top-1)->type, VM_HASHMAP_T))
 		return VM_TYPE_E;
 	top[1] = (vm_variable_t){.type=VM_STRING_T, .data.m=MMID_TO_PTR((top-1)->data.m,vm_hashmap_t*)->name};
+	return VM_NONE_E;
+}
+
+static vm_exception_t lib_length(vm_variable_t* top, uint32_t arguments){
+	ASSERT_ARRITY(arguments==1);
+	vm_type_t type = (top-1)->type;
+	if(type == VM_ARRAY_T){
+		top[1] = (vm_variable_t){.type=VM_INTEGER_T, .data.m=VM_CAST_ARRAY(top-1)->used};
+	}else if(type == VM_STRING_T){
+		top[1] = (vm_variable_t){.type=VM_INTEGER_T, .data.m=VM_CAST_STRING(top-1)->size};
+	}else if(VM_ISTYPE(type,VM_HASHMAP_T)){
+		vm_hashmap_t* map = VM_CAST_HASHMAP(top-1);
+		top[1] = (vm_variable_t){.type=VM_INTEGER_T, .data.m=map->used-map->deleted};
+	}else{
+		return VM_TYPE_E;
+	}
+	return VM_NONE_E;
+}
+
+static vm_exception_t lib_hashmap_keys(vm_variable_t* top, uint32_t arguments){
+	ASSERT_ARRITY(arguments==1);
+	ASSERT_TYPE_WEAK(1,VM_HASHMAP_T);
+	top[1] = (vm_variable_t){.type=VM_ARRAY_T, .data.m=vm_hashmap_keys(VM_CAST_HASHMAP(top-1))};
+	return VM_NONE_E;
+}
+
+static vm_exception_t lib_hashmap_values(vm_variable_t* top, uint32_t arguments){
+	ASSERT_ARRITY(arguments==1);
+	ASSERT_TYPE_WEAK(1,VM_HASHMAP_T);
+	top[1] = (vm_variable_t){.type=VM_ARRAY_T, .data.m=vm_hashmap_values(VM_CAST_HASHMAP(top-1))};
 	return VM_NONE_E;
 }
 
@@ -126,12 +165,12 @@ static vm_exception_t lib_string_concat(vm_variable_t* top, uint32_t arguments){
 			for(uint32_t j=0; j<src->size; j++)
 				*(dest++) = src->data[j];
 		}else{
-			*(dest++) = '[';
+			*(dest++) = '<';
 			*(dest++) = ':';
 			vm_string_t* src = MMID_TO_PTR(type_to_string(arg->type),vm_string_t*);
 			for(uint32_t j=0; j<src->size; j++)
 				*(dest++) = src->data[j];
-			*(dest++) = ']';
+			*(dest++) = '>';
 		}
 		arg -= 1;
 	}
@@ -358,29 +397,6 @@ static vm_exception_t lib_array_reverse(vm_variable_t* top, uint32_t arguments){
 	vm_reference(array);
 	top[1] = top[-1];
 	return VM_NONE_E;
-}
-
-static vm_exception_t lib_length(vm_variable_t* top, uint32_t arguments){
-	ASSERT_ARRITY(arguments==1);
-	vm_type_t type = (top-1)->type;
-	if(type == VM_ARRAY_T){
-		top[1] = (vm_variable_t){.type=VM_INTEGER_T, .data.m=VM_CAST_ARRAY(top-1)->used};
-	}else if(type == VM_STRING_T){
-		top[1] = (vm_variable_t){.type=VM_INTEGER_T, .data.m=VM_CAST_STRING(top-1)->size};
-	}else if(VM_ISTYPE(type,VM_HASHMAP_T)){
-		vm_hashmap_t* map = VM_CAST_HASHMAP(top-1);
-		top[1] = (vm_variable_t){.type=VM_INTEGER_T, .data.m=map->used-map->deleted};
-	}else{
-		return VM_TYPE_E;
-	}
-	return VM_NONE_E;
-}
-
-void vm_stdlib_init(){
-	for(uint32_t i=0; i<VM_TYPE_COUNT; i++){
-		vm_mmid_t id = ascii_to_string(vm_type_names[i],strlen(vm_type_names[i]));
-		type_string[i] = vm_string_intern(MMID_TO_PTR(id,vm_string_t*));
-	}
 }
 
 #include "vm_stdlib_exports.h"

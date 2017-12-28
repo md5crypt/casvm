@@ -20,6 +20,7 @@ vm_memory_t vm_mem_thread;
 vm_mmid_t main_thread;
 
 const vm_opcode_t* vm_progmem = NULL;
+vm_mmid_t vm_root;
 
 const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT] = {
 	[VM_ARRAY_T] = vm_array_free,

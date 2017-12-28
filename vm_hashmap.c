@@ -1,6 +1,7 @@
 #include "vm_hashmap.h"
 
 #include <string.h>
+#include "vm_array.h"
 #include "vm_util.h"
 
 #define THOMBSTONE 0xFFFFFFFF
@@ -56,7 +57,6 @@ void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value){
 	}else{
 		pair->data = value;
 		pair->key = key;
-		vm_variable_reference(value);
 	}
 	if(id == MMID_NULL && map->used++ > (map->size>>1))
 		grow(map);
@@ -68,4 +68,32 @@ vm_variable_t vm_hashmap_get(vm_hashmap_t* map, vm_mmid_t key){
 		return (vm_variable_t){.type=VM_UNDEFINED_T};
 	vm_variable_reference(pair->data);
 	return pair->data;
+}
+
+vm_mmid_t vm_hashmap_keys(vm_hashmap_t* map){
+	vm_mmid_t mapid = PTR_TO_MMID(map);
+	vm_mmid_t arrayid = vm_array_create(map->used-map->deleted);
+	map = MMID_TO_PTR(mapid,vm_hashmap_t*);
+	vm_array_t* array = MMID_TO_PTR(arrayid,vm_array_t*);
+	uint32_t offset = 0;
+	for(uint32_t i=0; i<map->size; i++){
+		if(map->data[i].key != MMID_NULL && map->data[i].key != THOMBSTONE)
+			array->data[offset++] = (vm_variable_t){.type=VM_STRING_T, .data.m=map->data[i].key};
+	}
+	return arrayid;
+}
+
+vm_mmid_t vm_hashmap_values(vm_hashmap_t* map){
+	vm_mmid_t mapid = PTR_TO_MMID(map);
+	vm_mmid_t arrayid = vm_array_create(map->used-map->deleted);
+	map = MMID_TO_PTR(mapid,vm_hashmap_t*);
+	vm_array_t* array = MMID_TO_PTR(arrayid,vm_array_t*);
+	uint32_t offset = 0;
+	for(uint32_t i=0; i<map->size; i++){
+		if(map->data[i].key != MMID_NULL && map->data[i].key != THOMBSTONE){
+			vm_variable_reference(map->data[i].data);
+			array->data[offset++] = map->data[i].data;
+		}
+	}
+	return arrayid;
 }

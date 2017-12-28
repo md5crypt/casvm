@@ -38,3 +38,5 @@ vm_array_t* vm_array_fill(vm_array_t* array, vm_variable_t var, int32_t offset, 
 void vm_array_reverse(vm_array_t* array);
 
 int32_t vm_array_find(vm_array_t* array, vm_variable_t var, int32_t offset);
+
+vm_variable_t* vm_array_apply(vm_array_t* array, vm_variable_t* top);

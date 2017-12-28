@@ -29,3 +29,7 @@ vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mm
 void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value);
 
 vm_variable_t vm_hashmap_get(vm_hashmap_t* map, vm_mmid_t key);
+
+vm_mmid_t vm_hashmap_values(vm_hashmap_t* map);
+
+vm_mmid_t vm_hashmap_keys(vm_hashmap_t* map);

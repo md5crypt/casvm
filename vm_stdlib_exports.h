@@ -3,6 +3,9 @@ const vm_stdlib_t vm_stdlib[] = {
 	{"__dtos",lib_dtos},
 	{"__typeof",lib_typeof},
 	{"__nameof",lib_nameof},
+	{"__length",lib_length},
+	{"__hashmap_keys",lib_hashmap_keys},
+	{"__hashmap_values",lib_hashmap_values},
 	{"__string_slice",lib_string_slice},
 	{"__string_concat",lib_string_concat},
 	{"__string_find",lib_string_find},
@@ -20,6 +23,5 @@ const vm_stdlib_t vm_stdlib[] = {
 	{"__array_find",lib_array_find},
 	{"__array_expand",lib_array_expand},
 	{"__array_reverse",lib_array_reverse},
-	{"__length",lib_length},
 	{NULL,NULL}
 };

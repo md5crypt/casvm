@@ -37,8 +37,8 @@ vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount){
 	newptr->queue = oldptr->queue;
 	newptr->state = oldptr->state;
 	memcpy(newptr->stack,oldptr->stack,sizeof(vm_variable_t)*oldptr->size);
-	vm_memory_replace(&vm_mem_array, oldid, newid);
-	return thread;
+	vm_memory_replace(&vm_mem_thread, oldid, newid);
+	return newptr;
 }
 
 void vm_thread_kill(vm_thread_t* thread){

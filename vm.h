@@ -40,6 +40,7 @@ extern vm_memory_t vm_mem_array;
 extern vm_memory_t vm_mem_string;
 extern vm_memory_t vm_mem_thread;
 
+extern vm_mmid_t vm_root;
 extern const vm_opcode_t* vm_progmem;
 
 void vm_init(uint32_t mmid_offset);

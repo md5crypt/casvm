@@ -60,6 +60,8 @@ int main(){
 	vm_progmem = code;
 	while((void*)objects < (void*)strings){
 		uint32_t mmid = vm_hashmap_create(8,objects->type,objects->name,objects->parent,(void*)(code+objects->code));
+		if(objects->parent == 0xFFFFFFFF)
+			vm_root = mmid;
 		if(objects->type == VM_EXTERN_T){
 			if(!vm_extern_resolve(mmid,externs+objects->code)){
 				printf("could not link external dependency '%s'\n",externs+objects->code);

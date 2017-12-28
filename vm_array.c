@@ -10,7 +10,6 @@ vm_array_t* vm_array_set(vm_array_t* array, int32_t pos, vm_variable_t value){
 	uint32_t index = (pos+array->offset) & (array->size-1);
 	vm_variable_dereference(array->data[index]);
 	array->data[index] = value;
-	vm_variable_reference(value);
 	return array;
 }
 
@@ -185,4 +184,14 @@ vm_variable_t vm_array_shift(vm_array_t* array){
 		return (vm_variable_t){.type=VM_UNDEFINED_T};
 	array->used -= 1;
 	return array->data[(array->offset++)&(array->size-1)];
+}
+
+vm_variable_t* vm_array_apply(vm_array_t* array, vm_variable_t* top){
+	uint32_t offset = array->offset+array->used-1;
+	for(uint32_t i=0; i<array->used; i++){
+		top[0] = array->data[(offset--)&(array->size-1)];
+		vm_variable_reference(top[0]);
+		top += 1;
+	}
+	return top-1;
 }

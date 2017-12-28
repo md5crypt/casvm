@@ -11,11 +11,12 @@
 
 #define RELOAD_THREAD(newthread) \
 	do{ \
-		base = (vm_variable_t*)((newthread)->stack) + (base-bottom); \
-		top = (vm_variable_t*)((newthread)->stack) + (top-bottom); \
-		bottom = (vm_variable_t*)((newthread)->stack); \
-		end = bottom + (newthread)->size; \
-		thread = (newthread); \
+		vm_thread_t* _newthread = (newthread); \
+		base = (vm_variable_t*)(_newthread->stack) + (base-bottom); \
+		top = (vm_variable_t*)(_newthread->stack) + (top-bottom); \
+		bottom = (vm_variable_t*)(_newthread->stack); \
+		end = bottom + _newthread->size; \
+		thread = _newthread; \
 	}while(0)
 
 #define GROW_THREAD(amount) \
@@ -217,9 +218,9 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					vm_variable_t tmp = vm_array_get(VM_CAST_ARRAY(top-1), top[0].data.i);
 					if(tmp.type == VM_INVALID_T)
 						ERROR(VM_OOB_E);
+					vm_variable_dereference(top[-1]);
+					top[-1] = tmp;
 					top -= 1;
-					vm_variable_dereference(*top);
-					*top = tmp;
 				}else if(VM_ISTYPE((top-1)->type, VM_HASHMAP_T)){
 					ASSERT_TYPE(top-0, VM_STRING_T);
 					top[-1] = vm_hashmap_get(VM_CAST_HASHMAP(top-1), vm_string_intern(VM_CAST_STRING(top-0)));
@@ -229,20 +230,18 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					vm_variable_t tmp = vm_string_get(VM_CAST_STRING(top-1), top[0].data.i);
 					if(tmp.type == VM_INVALID_T)
 						ERROR(VM_OOB_E);
+					vm_variable_dereference(top[-1]);
+					top[-1] = tmp;
 					top -= 1;
-					*top = tmp;
 				}else{
 					ERROR(VM_TYPE_E);
 				}
 				break;
 			case VM_OP_PUSH_MEMBER_UNSAFE:
 				SOFT_ASSERT_TYPE(top-1, VM_HASHMAP_T);
-				vm_variable_dereference(*(top-1));
-				top[-1] = vm_hashmap_get(VM_CAST_HASHMAP(top-1), (top-0)->data.i);
-				top -= 1;
+				*(--top) = vm_hashmap_get(VM_CAST_HASHMAP(top-1), (top-0)->data.i);
 				break;
 			case VM_OP_PUSH_MEMBER_CONST:
-				vm_variable_dereference(*top);
 				top[0] = vm_hashmap_get(VM_CAST_HASHMAP(top-0), opcode.o24.value);
 				break;
 			case VM_OP_PUSH_ARGUMENT:
@@ -298,14 +297,11 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					ASSERT_TYPE(top-0, VM_INTEGER_T);
 					if(!vm_array_set(VM_CAST_ARRAY(top-1),top[0].data.i,top[-2]))
 						ERROR(VM_OOB_E);
-					vm_variable_dereference(*(top-0));
-					vm_variable_dereference(*(top-1));
+					vm_variable_dereference(top[-1]);
 					top -= 3;
 				}else if(VM_ISTYPE((top-1)->type, VM_HASHMAP_T)){
 					ASSERT_TYPE(top-0, VM_STRING_T);
 					vm_hashmap_set(VM_CAST_HASHMAP(top-1), vm_string_intern(VM_CAST_STRING(top-0)), top[-2]);
-					vm_variable_dereference(*(top-0));
-					vm_variable_dereference(*(top-1));
 					top -= 3;
 					break;
 				}else{
@@ -315,13 +311,10 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 			case VM_OP_SET_MEMBER_UNSAFE:
 				SOFT_ASSERT_TYPE(top-1, VM_HASHMAP_T);
 				vm_hashmap_set(VM_CAST_HASHMAP(top-1), top[0].data.i, top[-2]);
-				vm_variable_dereference(*(top-0));
-				vm_variable_dereference(*(top-1));
 				top -= 3;
 				break;
 			case VM_OP_SET_MEMBER_CONST:
 				vm_hashmap_set(VM_CAST_HASHMAP(top-0), opcode.o24.value, top[-1]);
-				vm_variable_dereference(*(top-0));
 				top -= 2;
 				break;
 			case VM_OP_JMP:
@@ -335,34 +328,47 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 				if(!test(top--))
 					pc += opcode.o24.value-1;
 				break;
-			case VM_OP_CALL:
+			case VM_OP_APPLY:
+			case VM_OP_CALL: {
+				uint32_t args = opcode.o24.value;
+				if(opcode.o16.op == VM_OP_APPLY){
+					ASSERT_TYPE(top-1,VM_ARRAY_T);
+					vm_array_t* array = VM_CAST_ARRAY(top-1);
+					args = array->used;
+					if(top+args >= end)
+						GROW_THREAD((top+args)-end);
+					vm_variable_t func = top[0];
+					top = vm_array_apply(array,top-1);
+					vm_dereference(array,VM_ARRAY_T);
+					*(++top) = func;
+				}
 				if(top->type == VM_EXTERN_T){
 					vm_hashmap_t* hashmap = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 					if(hashmap->type == VM_NATIVE_T){
 						if(top+1 >= end)
 							GROW_THREAD(1);
 						*(top+1) = (vm_variable_t){ .type=VM_UNDEFINED_T, .data.i=0 };
-						vm_exception_t e = hashmap->code.native(top,opcode.o24.value);
+						vm_exception_t e = hashmap->code.native(top,args);
 						if(e != VM_NONE_E)
 							ERROR(e);
-						for(int32_t i = 0; i < opcode.o24.value; i++)
+						for(uint32_t i = 0; i < args; i++)
 							vm_variable_dereference(*(top-i-1));
-						*(top-opcode.o24.value) = top[1];
-						top -= opcode.o24.value;
+						*(top-args) = top[1];
+						top -= args;
 					}else{
 						ERROR(VM_TYPE_E);
 					}
 				}else if(VM_ISTYPE(top->type, VM_FUNCTION_T)){
 					vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 					*((vm_stackframe_t*)top) = CURRENT_STACKFRAME();
-					arguments = opcode.o24.value;
+					arguments = args;
 					pc = func->code.address;
 					base = top;					
 				}else{
 					ERROR(VM_TYPE_E);
 				}
 				break;
-			case VM_OP_CALL_UNSAFE: {
+			} case VM_OP_CALL_UNSAFE: {
 				vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 				*((vm_stackframe_t*)top) = CURRENT_STACKFRAME();
 				arguments = opcode.o24.value;

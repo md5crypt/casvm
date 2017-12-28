@@ -22,6 +22,7 @@ typedef enum {
 	VM_OP_JMP,
 	VM_OP_JE,
 	VM_OP_JNE,
+	VM_OP_APPLY,
 	VM_OP_CALL,
 	VM_OP_CALL_UNSAFE,
 	VM_OP_CALL_ASYNC,
