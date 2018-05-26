@@ -19,7 +19,7 @@ static void grow(vm_hashmap_t* map){
 		map->type,
 		map->name,
 		map->parent,
-		map->code.raw
+		(void*)map->code.address
 	);
 	vm_hashmap_t* newmap = MMID_TO_PTR(id, vm_hashmap_t*);
 	for(uint32_t i = 0; i<map->size; i++){
@@ -42,7 +42,7 @@ vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mm
 	map->type = type;
 	map->name = name;
 	map->parent = parent;
-	map->code.raw = code;
+	map->code.address = (uint32_t)code;
 	return id;
 }
 

@@ -4,6 +4,7 @@
 #include "vm_type.h"
 #include "vm_exception.h"
 #include "vm_memory.h"
+#include "vm_symbols.h"
 
 #define VM_ISTYPE(who, what) (vm_type_matrix[VM_TYPE_COUNT*who + what])
 #define VM_CONSTANT 0xFFFFFFFF
@@ -43,14 +44,11 @@ extern vm_memory_t vm_mem_thread;
 extern vm_mmid_t vm_root;
 extern const vm_opcode_t* vm_progmem;
 
-void vm_init(uint32_t mmid_offset);
+void vm_init();
 
-bool vm_extern_resolve(vm_mmid_t hashmap, const char* name);
 uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b);
-void vm_call(const vm_opcode_t* address);
+void vm_call(uint32_t address);
 vm_exception_t vm_run(void);
-
-extern void vm_stdlib_init(void);
 
 extern const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT];
 
@@ -100,3 +98,7 @@ inline static void vm_variable_reference(vm_variable_t v){
 inline static void vm_variable_dereference(vm_variable_t v){
 	vm_dereference_m(v.data.m,v.type);
 }
+
+bool vm_trace_next(vm_symbols_location_t* loc);
+
+void vm_recover();

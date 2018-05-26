@@ -162,3 +162,13 @@ int32_t vm_string_find(vm_string_t* str, vm_string_t* needle, int32_t offset){
 void vm_string_free(vm_string_t* str){
 	vm_memory_free(&vm_mem_string, PTR_TO_MMID(str));
 }
+
+vm_mmid_t vm_string_cstr(const char* cstr, uint32_t len){
+	vm_mmid_t id = vm_string_create(len);
+	vm_string_t* str = MMID_TO_PTR(id, vm_string_t*); 
+	if(len == 0)
+		len = strlen(cstr);
+	for(uint32_t i = 0; i<len; i++)
+		str->data[i] = cstr[i];
+	return id;
+}

@@ -16,9 +16,8 @@ typedef struct {
 	vm_mmid_t parent;
 	vm_type_t type;
 	union {
-		const vm_opcode_t* address;
+		uint32_t address;
 		vm_native_t native;
-		void* raw;
 	} code;
 	vm_hashmap_pair_t data[0];
 } vm_hashmap_t;

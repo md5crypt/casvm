@@ -5,8 +5,6 @@
 typedef struct {
 	const char* name;
 	vm_native_t function;
-} vm_stdlib_t;
+} vm_extern_t;
 
-extern const vm_stdlib_t vm_stdlib[];
-
-void vm_stdlib_init(void);
+extern const vm_extern_t vm_externs[];

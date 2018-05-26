@@ -30,3 +30,9 @@ vm_mmid_t vm_string_intern(vm_string_t* str);
 int32_t vm_string_find(vm_string_t* str, vm_string_t* needle, int32_t offset);
 
 void vm_string_free(vm_string_t* str);
+
+vm_mmid_t vm_string_cstr(const char* cstr, uint32_t len);
+
+static inline wstring_t* vm_string_to_wstr(vm_string_t* str){
+	return (wstring_t*)(&str->size);
+}

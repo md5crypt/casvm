@@ -2,80 +2,112 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include "vm.h"
-#include "vm_hashmap.h"
-#include "vm_string.h"
+#include "vm_loader.h"
+#include "vm_util.h"
 
 typedef struct {
+	uint8_t* data;
 	uint32_t size;
-	uint32_t s_code;
-	uint32_t s_object;
-	uint32_t s_string;
-	uint32_t mmid_offset;
-	uint8_t data[0];
-} image_header_t;
+} filedata_t;
 
-typedef struct {
-	vm_type_t type;
-	vm_mmid_t name;
-	vm_mmid_t parent;
-	uint32_t code;
-} object_header_t;
-
-typedef struct {
-	uint32_t size;
-	uint16_t data[0];
-} string_header_t;
-
-image_header_t* readfile(const char* path){
+filedata_t readfile(const char* path){
 	FILE* fp = fopen(path, "rb");
 	if(fp == NULL)
-		return NULL;
+		return (filedata_t){NULL,0};
 	fseek(fp, 0, SEEK_END);
 	uint32_t size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	void* data = malloc(size);
-	if(fread(data, 1, size, fp) != size){
-		fclose(fp);
-		return NULL;
-	}
+	uint8_t* data = (uint8_t*)malloc(size);
+	if(fread(data, 1, size, fp) != size)
+		return (filedata_t){NULL,0};
 	fclose(fp);
-	image_header_t* const head = (image_header_t*)data;
-	if(head->size != 0xB5006BB1)
-		return NULL;
-	head->size = size;
-	return data;
+	return (filedata_t){data,size};
+}
+
+static void wstring_print(wstring_t* str){
+	for(uint32_t i=0; i<str->size; i++)
+		putchar(str->data[i]);
+}
+
+static void print_loc(vm_symbols_location_t* loc){
+	if(loc->function == NULL){
+		printf("vm-internal [pc:%d]\n",loc->pc);
+	}else{
+		wstring_print(loc->function);
+		printf(":%d (",loc->line);
+		if(loc->file == NULL){
+			printf("unknown");
+		}else{
+			wstring_print(loc->file);
+		}
+		printf(") [pc:%d]",loc->pc);
+	}
+}
+
+static void print_exception(vm_exception_t e){
+	static const char* names[] = {
+		"NONE","YIELD","USER","OUT-OF-BOUNDS","TYPE","ARRITY","IMMUTABLE","INTERNAL"
+	};
+	const vm_exception_data_t* data = vm_exception_data_get();
+	printf("Exception (%s)",names[e]);
+	switch(e){
+		case VM_NONE_E:
+		case VM_YIELD_E:
+		case VM_IMMUTABLE_E:
+		case VM_INTERNAL_E:
+			break;
+		case VM_USER_E:
+			if(data->f1){
+				printf(": ");
+				wstring_print((wstring_t*)data->f1);
+			}
+			break;
+		case VM_OOB_E:
+			printf(": accessed element %d out of %d",data->f1,data->f2);
+			break;
+		case VM_ARRITY_E:
+			printf(": passed %d arguments, expected %d",data->f1,data->f2);
+			break;
+		case VM_TYPE_E:
+			printf(": got \"%s\", expected \"%s\"",vm_type_names[data->f1],vm_type_names[data->f2]);
+			break;
+	}
+	putchar('\n');
+	vm_symbols_location_t loc;
+	while(vm_trace_next(&loc)){
+		printf("  at ");
+		print_loc(&loc);
+		putchar('\n');
+	}
 }
 
 int main(){
-	image_header_t* head = readfile("C:\\Users\\Administrator\\Desktop\\asc\\__output\\image.bin");
-	if(head == NULL){
+	filedata_t image = readfile("C:\\Users\\Administrator\\Desktop\\asc\\__output\\image.bin");
+	if(image.data == NULL){
 		puts("error opening file");
 		exit(1);
 	}
-	const vm_opcode_t* code = (vm_opcode_t*)head->data;
-	const object_header_t* objects = (object_header_t*)(head->data + head->s_code);
-	const string_header_t* strings = (string_header_t*)(head->data + head->s_code + head->s_object);
-	const char* externs = (char*)(head->data + head->s_code + head->s_object + head->s_string);
-	vm_init(head->mmid_offset);
-	vm_progmem = code;
-	while((void*)objects < (void*)strings){
-		uint32_t mmid = vm_hashmap_create(8,objects->type,objects->name,objects->parent,(void*)(code+objects->code));
-		if(objects->parent == 0xFFFFFFFF)
-			vm_root = mmid;
-		if(objects->type == VM_EXTERN_T){
-			if(!vm_extern_resolve(mmid,externs+objects->code)){
-				printf("could not link external dependency '%s'\n",externs+objects->code);
-				exit(1);
-			}
-		}
-		objects += 1;
+	vm_init();
+	vm_loader_error_t ret = vm_loader_load(image.data,image.size);
+	switch(ret){
+		case VM_LOADER_ERROR_MAGICDWORD:
+			puts("invalid magic number");
+			exit(1);
+		case VM_LOADER_ERROR_SECTION:
+			printf("unknown section: '%s'\n",(char*)vm_loader_error_data);
+			exit(1);
+		case VM_LOADER_ERROR_EXTERN:
+			printf("unresolved extern: '");
+			wstring_print((wstring_t*)vm_loader_error_data);
+			puts("'");
+			exit(1);
+		default:
+			break;
 	}
-	while((void*)strings < (void*)externs){
-		vm_string_insert(strings->data,strings->size);
-		strings += 1+(strings->size+(strings->size&1))/2;
+	vm_call(0);
+	vm_exception_t e = vm_run();
+	if(e != VM_NONE_E){
+		print_exception(e);
 	}
-	vm_stdlib_init();
-	vm_call(code);
-	printf("%d\n",vm_run());
 	return 0;
 }

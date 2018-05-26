@@ -36,9 +36,22 @@ console.log("codegen.js: creating vm_type.c")
 fs.writeFileSync('vm_type.c', `#include "vm_type.h"\n\n${typeMatrix}\n\n${typeNames}\n`)
 console.log("codegen.js: creating vm_op.h")
 fs.writeFileSync('vm_op.h', `#pragma once\n\ntypedef enum {\n${require('./vm_op.json').map(x => '\tVM_OP_' + x.toUpperCase()).join(',\n')}\n} vm_op_t;\n`)
-console.log("codegen.js: creating vm_stdlib_exports.h")
-const data = fs.readFileSync('vm_stdlib.c', 'utf-8')
-    .match(/^static\s*vm_exception_t\s*lib_[^(]+\([^{\n]+{$/gm)
-    .map(x => x.match(/lib_([^(\s]+)/)[1])
-    .map(x => `\t{"__${x}",lib_${x}},`).join('\n');
-fs.writeFileSync('vm_stdlib_exports.h', `const vm_stdlib_t vm_stdlib[] = {\n${data}\n\t{NULL,NULL}\n};\n`)
+console.log("codegen.js: creating vm_externs.c")
+
+const cammel = x => x.split('_').map((x, i) => i == 0 ? x : x.charAt(0).toUpperCase() + x.slice(1)).join('')
+
+const data = fs.readdirSync('lib')
+    .filter(x => x.match(/.c$/))
+    .map(x => fs.readFileSync('lib/'+x, 'utf8'))
+    .join('/n')
+    .match(/^vm_exception_t\s*vm_lib_[^(]+\([^{\n]+{$/gm)
+    .map(x => x.match(/vm_lib_([^(\s]+)/)[1])
+    .sort()
+
+fs.writeFileSync('vm_externs.c',
+    '#include "vm_externs.h"\n\n' +
+    data.map(x => `extern vm_exception_t ${'vm_lib_' + x}(vm_variable_t* top, uint32_t arguments);`).join('\n') +
+    `\n\nconst vm_extern_t vm_externs[] = {\n${
+        data.map(x => `\t{"__${cammel(x)}",vm_lib_${x} },`).join('\n')
+    }\n\t{NULL,NULL}\n};\n`
+)

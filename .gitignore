@@ -1,2 +1,5 @@
 Debug
 Release
+vm_type.[hc]
+vm_op.h
+vm_externs.c
