@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "vm_array.h"
 #include "vm_util.h"
 #include "vm_conf.h"

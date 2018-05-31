@@ -1,11 +1,11 @@
 #pragma once
 
 #include <string.h>
-#include "../vm.h"
-#include "../vm_util.h"
-#include "../vm_string.h"
-#include "../vm_array.h"
-#include "../vm_hashmap.h"
+#include "vm.h"
+#include "vm_util.h"
+#include "vm_string.h"
+#include "vm_array.h"
+#include "vm_hashmap.h"
 
 #define ASSERT_ARRITY(n) if(arguments!=n){ \
 	vm_exception_arrity(arguments, n);     \

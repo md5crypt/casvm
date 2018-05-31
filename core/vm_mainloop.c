@@ -485,19 +485,19 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id){
 					ERROR(VM_TYPE_E);
 				}
 				break;
-			case VM_OP_ASSERT_ARRITY_EQ:
+			case VM_OP_ASSERT_ARITY_EQ:
 				if(arguments != (uint32_t)opcode.o24.value){
 					vm_exception_arrity(arguments, opcode.o24.value);
 					ERROR(VM_ARRITY_E);
 				}
 				break;
-			case VM_OP_ASSERT_ARRITY_GE:
+			case VM_OP_ASSERT_ARITY_GE:
 				if(arguments < (uint32_t)opcode.o24.value){
 					vm_exception_arrity(arguments, opcode.o24.value);
 					ERROR(VM_ARRITY_E);
 				}
 				break;
-			case VM_OP_SET_ARRITY:
+			case VM_OP_SET_ARITY:
 				if(arguments < (uint32_t)opcode.o24.value){
 					const uint32_t diff = (uint32_t)opcode.o24.value - arguments;
 					if(top+diff >= end)

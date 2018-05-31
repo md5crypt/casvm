@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "vm.h"
 #include "vm_symbols.h"
 #include "vm_hashmap.h"

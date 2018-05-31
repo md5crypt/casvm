@@ -2,6 +2,9 @@
 const fs = require('fs')
 
 const types = require('./vm_type.json')
+const op = require('./vm_op.json')
+
+const rootdir = __dirname+'/..';
 
 const map = {}
 for(let i=0; i<types.length; i++)
@@ -31,25 +34,26 @@ for(let i=0; i<n; i++)
 typeMatrix =  typeMatrix.slice(0,-2)+'\n};'
 
 console.log("codegen.js: creating vm_type.h")
-fs.writeFileSync('vm_type.h',`#pragma once\n#define VM_TYPE_COUNT\t${n}\n\n${typeEnum}\n\nextern const vm_type_t vm_type_matrix[VM_TYPE_COUNT*VM_TYPE_COUNT];\nextern const char* const vm_type_names[VM_TYPE_COUNT];\n`)
+fs.writeFileSync(rootdir+'/core/vm_type.h',`#pragma once\n#define VM_TYPE_COUNT\t${n}\n\n${typeEnum}\n\nextern const vm_type_t vm_type_matrix[VM_TYPE_COUNT*VM_TYPE_COUNT];\nextern const char* const vm_type_names[VM_TYPE_COUNT];\n`)
 console.log("codegen.js: creating vm_type.c")
-fs.writeFileSync('vm_type.c', `#include "vm_type.h"\n\n${typeMatrix}\n\n${typeNames}\n`)
+fs.writeFileSync(rootdir+'/core/vm_type.c', `#include "vm_type.h"\n\n${typeMatrix}\n\n${typeNames}\n`)
 console.log("codegen.js: creating vm_op.h")
-fs.writeFileSync('vm_op.h', `#pragma once\n\ntypedef enum {\n${require('./vm_op.json').map(x => '\tVM_OP_' + x.toUpperCase()).join(',\n')}\n} vm_op_t;\n`)
+fs.writeFileSync(rootdir+'/core/vm_op.h', `#pragma once\n\ntypedef enum {\n${op.map(x => '\tVM_OP_' + x.toUpperCase()).join(',\n')}\n} vm_op_t;\n`)
 console.log("codegen.js: creating vm_externs.c")
 
 const cammel = x => x.split('_').map((x, i) => i == 0 ? x : x.charAt(0).toUpperCase() + x.slice(1)).join('')
 
-const data = fs.readdirSync('lib')
+const data = fs.readdirSync(rootdir+'/stdlib')
     .filter(x => x.match(/.c$/))
-    .map(x => fs.readFileSync('lib/'+x, 'utf8'))
+    .map(x => fs.readFileSync(rootdir+'/stdlib/'+x, 'utf8'))
     .join('/n')
     .match(/^vm_exception_t\s*vm_lib_[^(]+\([^{\n]+{$/gm)
     .map(x => x.match(/vm_lib_([^(\s]+)/)[1])
     .sort()
 
-fs.writeFileSync('vm_externs.c',
-    '#include "vm_externs.h"\n\n' +
+fs.writeFileSync(rootdir+'/core/vm_externs.c',
+	'#include <stddef.h>\n\n' +
+	'#include "vm_externs.h"\n\n' +
     data.map(x => `extern vm_exception_t ${'vm_lib_' + x}(vm_variable_t* top, uint32_t arguments);`).join('\n') +
     `\n\nconst vm_extern_t vm_externs[] = {\n${
         data.map(x => `\t{"__${cammel(x)}",vm_lib_${x} },`).join('\n')
