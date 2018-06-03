@@ -1,2 +1,3 @@
 .out
 vm
+vm_externs.c

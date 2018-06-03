@@ -1,28 +1,28 @@
-CC := clang
+CC := gcc
 NODE := node
+MAKE := make
 
-OUTDIR := .out
-
-GENERATED_SOURCE := ../core/vm_externs.c ../core/vm_type.c
-GENERATED_HEADERS := ../core/vm_op.h ../core/vm_type.h
-
-SCRIPT := ../scripts/codegen.js
-SCRIPT_INPUTS := ../scripts/vm_op.json ../scripts/vm_type.json $(wildcard ../stdlib/*.c)
-
-CFLAGS := -Wall -Wextra -std=c11 -g -Og
+CFLAGS := -m32 -Wall -Wextra -std=c11 -g -Og -ftest-coverage -fprofile-arcs
 INCLUDE_PATH := ../core
 
 VPATH := ..
+SCRIPT := ../scripts/codegen.js
+OUTDIR := .out
 
-.DEFAULT_GOAL := all
-
-SOURCES := $(subst ../,,$(wildcard ../core/*.c) $(wildcard ../stdlib/*.c) $(GENERATED_SOURCE)) main.c
+SOURCES := $(subst ../,,$(wildcard ../core/*.c) $(wildcard ../stdlib/*.c)) \
+	core/vm_type.c main.c vm_lib_test.c vm_externs.c
 OBJECTS := $(addprefix $(OUTDIR)/,$(patsubst %.c,%.o,$(SOURCES)))
+EXTERNS := $(wildcard ../stdlib/*.c) vm_lib_test.c
 
-all: $(GENERATED_SOURCE) $(GENERATED_HEADERS) vm
+all: pre-build main-build
 
-$(GENERATED_SOURCE) $(GENERATED_HEADERS): $(SCRIPT) $(SCRIPT_INPUTS)
-	$(NODE) $(SCRIPT)
+pre-build:
+	@$(MAKE) -C ../core
+
+main-build: vm
+
+vm_externs.c: $(SCRIPT) $(EXTERNS)
+	$(NODE) $(SCRIPT) $(addprefix -l ,$(EXTERNS))
 
 $(OUTDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
@@ -33,6 +33,6 @@ vm: $(OBJECTS)
 
 clean:
 	rm -rf $(OUTDIR)
-	rm -f vm
+	rm -f vm_externs.c
 
 -include $(patsubst %.o,%.d,$(OBJECTS))
