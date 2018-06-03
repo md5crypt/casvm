@@ -1,7 +1,8 @@
 #pragma once
+#include <stdbool.h>
 #include "vm.h"
 
-#define VM_CAST_HASHMAP(var) MMID_TO_PTR((var)->data.m,vm_hashmap_t*)
+#define VM_CAST_HASHMAP(var) MMID_TO_PTR((var)->data.m, vm_hashmap_t*)
 
 typedef struct {
 	vm_mmid_t key;
@@ -27,8 +28,10 @@ vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mm
 
 void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value);
 
-vm_variable_t vm_hashmap_get(vm_hashmap_t* map, vm_mmid_t key);
+void vm_hashmap_get(const vm_hashmap_t* map, vm_mmid_t key, vm_variable_t* value);
 
-vm_mmid_t vm_hashmap_values(vm_hashmap_t* map);
+bool vm_hashmap_has(const vm_hashmap_t* map, vm_mmid_t key);
 
-vm_mmid_t vm_hashmap_keys(vm_hashmap_t* map);
+vm_mmid_t vm_hashmap_values(const vm_hashmap_t* map);
+
+vm_mmid_t vm_hashmap_keys(const vm_hashmap_t* map);

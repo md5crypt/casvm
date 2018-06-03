@@ -6,24 +6,24 @@
 
 vm_memmap_t vm_memmap;
 
-static void memmap_grow(uint32_t size){
+static void memmap_grow(uint32_t size) {
 	vm_memmap.bottom = (void**)realloc(vm_memmap.bottom,sizeof(void**)*size);
 	vm_memmap.top = vm_memmap.bottom + vm_memmap.size;
 	vm_memmap.size = size;
 }
 
-static vm_mmid_t memmap_new(){
-	if(vm_memmap.stack.used > 0){
+static vm_mmid_t memmap_new() {
+	if (vm_memmap.stack.used > 0) {
 		vm_memmap.stack.used -= 1;
 		return *(--vm_memmap.stack.top);
 	}
-	if(vm_memmap.used == vm_memmap.size)
+	if (vm_memmap.used == vm_memmap.size)
 		memmap_grow(vm_memmap.size*2);
 	return vm_memmap.used++;
 }
 
-static void memmap_free(vm_mmid_t id){
-	if(vm_memmap.stack.used == vm_memmap.stack.size){
+static void memmap_free(vm_mmid_t id) {
+	if (vm_memmap.stack.used == vm_memmap.stack.size) {
 		vm_memmap.stack.bottom = (vm_mmid_t*)realloc(vm_memmap.stack.bottom,sizeof(vm_mmid_t)*vm_memmap.stack.size*2);
 		vm_memmap.stack.top = vm_memmap.stack.bottom + vm_memmap.stack.size;
 		vm_memmap.stack.size <<= 1;
@@ -32,15 +32,15 @@ static void memmap_free(vm_mmid_t id){
 	*(vm_memmap.stack.top++) = id;
 }
 
-static void grow(vm_memory_t* mem, uint32_t newsize){
-	if(newsize == 0)
+static void grow(vm_memory_t* mem, uint32_t newsize) {
+	if (newsize == 0)
 		newsize = mem->size;
 	uint8_t* bottom = malloc(newsize);
 	uint8_t* top = bottom;
 	vm_memblock_t* block = (vm_memblock_t*)mem->bottom;
 	vm_memblock_t* end = (vm_memblock_t*)mem->top;
-	while(block < end){
-		if(block->id > 0){
+	while (block < end) {
+		if (block->id > 0) {
 			vm_memmap.bottom[block->id] = ((vm_memblock_t*)top)->data;
 			memcpy(top, block, block->size);
 			top += block->size;
@@ -56,7 +56,7 @@ static void grow(vm_memory_t* mem, uint32_t newsize){
 	mem->available = mem->free;
 }
 
-void vm_memmap_init(uint32_t mapsize, uint32_t stacksize){
+void vm_memmap_init(uint32_t mapsize, uint32_t stacksize) {
 	vm_memmap.size = mapsize;
 	vm_memmap.used = 1;
 	vm_memmap.bottom = (void**)malloc(sizeof(void*) * mapsize);
@@ -67,14 +67,14 @@ void vm_memmap_init(uint32_t mapsize, uint32_t stacksize){
 	vm_memmap.stack.bottom = vm_memmap.stack.top;
 }
 
-void vm_memmap_set_offset(uint32_t offset){
-	if(vm_memmap.size < offset)
+void vm_memmap_set_offset(uint32_t offset) {
+	if (vm_memmap.size < offset)
 		memmap_grow(npot(offset*2));
 	vm_memmap.used = offset;
 	vm_memmap.stack.used = 0;
 }
 
-void vm_memory_init(vm_memory_t* mem, uint32_t size){
+void vm_memory_init(vm_memory_t* mem, uint32_t size) {
 	mem->top = malloc(size);
 	mem->bottom = mem->top;
 	mem->size = size;
@@ -83,13 +83,13 @@ void vm_memory_init(vm_memory_t* mem, uint32_t size){
 	mem->available = size;
 }
 
-uint32_t vm_memory_allocate(vm_memory_t* mem, uint32_t size){
+uint32_t vm_memory_allocate(vm_memory_t* mem, uint32_t size) {
 	size += sizeof(vm_memblock_t);
-	if(size&3)
+	if (size&3)
 		size += 4-(size&3);
-	if(mem->available < size){
+	if (mem->available < size) {
 		uint32_t newsize = mem->size;
-		while(newsize < (mem->used+size)*2)
+		while (newsize < (mem->used+size)*2)
 			newsize <<= 1;
 		grow(mem, newsize);
 	}
@@ -104,7 +104,7 @@ uint32_t vm_memory_allocate(vm_memory_t* mem, uint32_t size){
 	return block->id;
 }
 
-void vm_memory_replace(vm_memory_t* mem, vm_mmid_t dst, vm_mmid_t src){
+void vm_memory_replace(vm_memory_t* mem, vm_mmid_t dst, vm_mmid_t src) {
 	vm_memblock_t* dstblock = (vm_memblock_t*)((uint8_t*)vm_memmap.bottom[dst] - sizeof(vm_memblock_t));
 	vm_memblock_t* srcblock = (vm_memblock_t*)((uint8_t*)vm_memmap.bottom[src] - sizeof(vm_memblock_t));
 	dstblock->id = 0;
@@ -114,7 +114,7 @@ void vm_memory_replace(vm_memory_t* mem, vm_mmid_t dst, vm_mmid_t src){
 	memmap_free(src);
 }
 
-void vm_memory_free(vm_memory_t* mem, vm_mmid_t id){
+void vm_memory_free(vm_memory_t* mem, vm_mmid_t id) {
 	vm_memblock_t* block = (vm_memblock_t*)((uint8_t*)vm_memmap.bottom[id] - sizeof(vm_memblock_t));
 	block->id = 0;
 	mem->used -= block->size;

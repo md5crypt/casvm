@@ -33,6 +33,6 @@ void vm_string_free(vm_string_t* str);
 
 vm_mmid_t vm_string_cstr(const char* cstr, uint32_t len);
 
-static inline wstring_t* vm_string_to_wstr(vm_string_t* str){
+static inline wstring_t* vm_string_to_wstr(vm_string_t* str) {
 	return (wstring_t*)(&str->size);
 }

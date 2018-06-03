@@ -24,15 +24,15 @@ static vm_mmid_t main_thread;
 static struct {
 	vm_mmid_t thread;
 	vm_exception_t exception;
-} last_error;
+} last_fault;
 
 const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT] = {
-	[VM_ARRAY_T] = vm_array_free,
-	[VM_STRING_T] = vm_string_free,
-	[VM_THREAD_T] = vm_thread_free
+	[VM_ARRAY_T] = (vm_destructor_t)vm_array_free,
+	[VM_STRING_T] = (vm_destructor_t)vm_string_free,
+	[VM_THREAD_T] = (vm_destructor_t)vm_thread_free
 };
 
-void vm_init(){
+void vm_init() {
 	vm_memmap_init(MEMMAP_SIZE, MEMMAP_STACK_SIZE);
 	vm_memory_init(&vm_mem_const, MEMORY_CONST_SIZE);
 	vm_memory_init(&vm_mem_hashmap, MEMORY_HASHMAP_SIZE);
@@ -43,12 +43,12 @@ void vm_init(){
 	main_thread = vm_thread_create(0);
 	vm_make_const(main_thread);
 	vm_symbols_clear();
-	last_error.exception = VM_NONE_E;
+	last_fault.exception = VM_NONE_E;
 }
 
-void vm_call(uint32_t address){
+void vm_call(uint32_t address) {
 	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
-	if(thread->state == VM_THREAD_STATE_FINISHED)
+	if (thread->state == VM_THREAD_STATE_FINISHED)
 		vm_variable_dereference(thread->stack->variable);
 	thread->stack[0].frame = VM_PACK_STACKFRAME(0,0,0);
 	thread->stack[1].frame = VM_PACK_STACKFRAME(address,0,0);
@@ -57,47 +57,49 @@ void vm_call(uint32_t address){
 	vm_thread_push(thread);
 }
 
-uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b){
-	if(a.type != b.type)
+uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b) {
+	if (a.type != b.type)
 		return 0;
-	if(a.data.i == b.data.i)
+	if (a.data.i == b.data.i)
 		return 1;
-	if(a.type == VM_STRING_T)
+	if (a.type == VM_STRING_T)
 		return vm_string_cmp(VM_CAST_STRING(&a),VM_CAST_STRING(&b));
 	return 0;
 }
 
-vm_exception_t vm_run(){
-	if(last_error.exception != VM_NONE_E)
-		return last_error.exception;
-	while(true){
+vm_exception_t vm_run() {
+	if (last_fault.exception != VM_NONE_E)
+		return last_fault.exception;
+	while (true) {
 		vm_mmid_t thread_id = vm_thread_pop();
-		if(thread_id == MMID_NULL)
+		if (thread_id == MMID_NULL)
 			return VM_NONE_E;
 		vm_exception_t e = vm_mainloop(thread_id);
-		if(e != VM_YIELD_E && e != VM_NONE_E){
-			last_error.thread = thread_id;
-			last_error.exception = e;
+		if (e != VM_YIELD_E && e != VM_NONE_E) {
+			last_fault.thread = thread_id;
+			last_fault.exception = e;
 			return e;
 		}
-		vm_dereference_m(thread_id,VM_THREAD_T);
+		vm_dereference_m(thread_id, VM_THREAD_T);
 	}
 }
 
-void vm_recover(){
-	if(last_error.exception != VM_NONE_E){
-		vm_dereference_m(last_error.thread,VM_THREAD_T);
-		last_error.exception = VM_NONE_E;
+void vm_fault_recover() {
+	if (last_fault.exception != VM_NONE_E) {
+		vm_dereference_m(last_fault.thread, VM_THREAD_T);
+		last_fault.exception = VM_NONE_E;
 	}
 }
 
+vm_mmid_t vm_fault_get_thread() {
+	return last_fault.thread;
+}
 
-bool vm_trace_next(vm_symbols_location_t* loc){
-	vm_thread_t* thread = MMID_TO_PTR(last_error.thread,vm_thread_t*);
-	if(thread->top != 0){
-		uint32_t pc = thread->stack[thread->top].frame.link;
-		thread->top = thread->stack[thread->top].frame.base;
-		vm_symbols_get_location(pc, loc);
+bool vm_fault_trace(vm_symbols_location_t* loc) {
+	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
+	if (thread->top != 0) {
+		vm_symbols_get_location(thread->stack[thread->top].frame.link, loc);
+		vm_thread_unwind(thread);
 		return true;
 	}
 	return false;

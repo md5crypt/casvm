@@ -2,7 +2,7 @@
 #include "vm.h"
 
 #define VM_PACK_STACKFRAME(_link,_base,_arguments) \
-	((vm_stackframe_t){ \
+	((vm_stackframe_t) { \
 		.link=(_link), \
 		.base=(_base), \
 		.arguments_low=((_arguments)&0xFF), \
@@ -45,4 +45,5 @@ vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount);
 void vm_thread_wait(vm_thread_t* thread, vm_thread_t* queue);
 void vm_thread_free(vm_thread_t* thread);
 void vm_thread_push(vm_thread_t* thread);
-void vm_thread_kill(vm_thread_t* thread);
+void vm_thread_kill(vm_thread_t* thread, vm_variable_t value);
+bool vm_thread_unwind(vm_thread_t* thread);

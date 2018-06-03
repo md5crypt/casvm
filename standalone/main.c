@@ -4,97 +4,126 @@
 #include "vm.h"
 #include "vm_loader.h"
 #include "vm_util.h"
+#include "vm_thread.h"
+#include "vm_string.h"
 
 typedef struct {
 	uint8_t* data;
 	uint32_t size;
 } filedata_t;
 
-filedata_t readfile(const char* path){
+static const char* exception_names[] = {
+	"NONE", "YIELD", "USER", "OUT-OF-BOUNDS", "TYPE", "ARITY", "IMMUTABLE", "INTERNAL"
+};
+
+extern uint32_t test_lib_try;
+
+filedata_t readfile(const char* path) {
 	FILE* fp = fopen(path, "rb");
-	if(fp == NULL)
-		return (filedata_t){NULL,0};
+	if (fp == NULL) {
+		return (filedata_t) {NULL, 0};
+	}
 	fseek(fp, 0, SEEK_END);
 	uint32_t size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 	uint8_t* data = (uint8_t*)malloc(size);
-	if(fread(data, 1, size, fp) != size)
-		return (filedata_t){NULL,0};
+	if (fread(data, 1, size, fp) != size) {
+		return (filedata_t) {NULL, 0};
+	}
 	fclose(fp);
-	return (filedata_t){data,size};
+	return (filedata_t) {data, size};
 }
 
-static void wstring_print(wstring_t* str){
-	for(uint32_t i=0; i<str->size; i++)
+static void wstring_print(wstring_t* str) {
+	for (uint32_t i = 0; i < str->size; i++) {
 		putchar(str->data[i]);
-}
-
-static void print_loc(vm_symbols_location_t* loc){
-	if(loc->function == NULL){
-		printf("vm-internal [pc:%d]\n",loc->pc);
-	}else{
-		wstring_print(loc->function);
-		printf(":%d (",loc->line);
-		if(loc->file == NULL){
-			printf("unknown");
-		}else{
-			wstring_print(loc->file);
-		}
-		printf(") [pc:%d]",loc->pc);
 	}
 }
 
-static void print_exception(vm_exception_t e){
-	static const char* names[] = {
-		"NONE","YIELD","USER","OUT-OF-BOUNDS","TYPE","ARRITY","IMMUTABLE","INTERNAL"
-	};
+static void print_loc(vm_symbols_location_t* loc) {
+	if (loc->function == NULL) {
+		printf("vm-internal [pc:%d]\n", loc->pc);
+	} else {
+		wstring_print(loc->function);
+		printf(":%d (", loc->line);
+		if (loc->file == NULL) {
+			printf("unknown");
+		} else {
+			wstring_print(loc->file);
+		}
+		printf(") [pc:%d]", loc->pc);
+	}
+}
+
+static void print_exception(vm_exception_t e) {
 	const vm_exception_data_t* data = vm_exception_data_get();
-	printf("Exception (%s)",names[e]);
-	switch(e){
+	printf("Exception (%s)", exception_names[e]);
+	switch (e) {
 		case VM_NONE_E:
 		case VM_YIELD_E:
 		case VM_IMMUTABLE_E:
 		case VM_INTERNAL_E:
 			break;
 		case VM_USER_E:
-			if(data->f1){
+			if (data->f1) {
 				printf(": ");
 				wstring_print((wstring_t*)data->f1);
 			}
 			break;
 		case VM_OOB_E:
-			printf(": accessed element %d out of %d",data->f1,data->f2);
+			printf(": accessed element %d out of %d", data->f1, data->f2);
 			break;
-		case VM_ARRITY_E:
-			printf(": passed %d arguments, expected %d",data->f1,data->f2);
+		case VM_ARITY_E:
+			printf(": passed %d arguments, expected %d", data->f1, data->f2);
 			break;
 		case VM_TYPE_E:
-			printf(": got \"%s\", expected \"%s\"",vm_type_names[data->f1],vm_type_names[data->f2]);
+			printf(": got \"%s\", expected \"%s\"", vm_type_names[data->f1], vm_type_names[data->f2]);
 			break;
 	}
 	putchar('\n');
 	vm_symbols_location_t loc;
-	while(vm_trace_next(&loc)){
+	while (vm_fault_trace(&loc)) {
 		printf("  at ");
 		print_loc(&loc);
 		putchar('\n');
 	}
 }
 
-int main(){
-	filedata_t image = readfile("C:\\Users\\Administrator\\Desktop\\asc\\__output\\image.bin");
-	if(image.data == NULL){
+bool run() {
+	while (true) {
+		vm_exception_t e = vm_run();
+		if (e != VM_NONE_E) {
+			if (test_lib_try == 0) {
+				print_exception(e);
+				return false;
+			}
+			vm_thread_t* thread = MMID_TO_PTR(vm_fault_get_thread(), vm_thread_t*);
+			vm_thread_kill(thread, VM_VARIABLE_MMID(VM_STRING_T, vm_string_cstr(exception_names[e], 0)));
+			vm_fault_recover();
+		} else {
+			return true;
+		}
+	}
+}
+
+int main(int argc, char *argv[]) {
+	if (argc != 2) {
+		puts("usage: vm [input file]");
+		return 1;
+	}
+	filedata_t image = readfile(argv[1]);
+	if (image.data == NULL) {
 		puts("error opening file");
 		exit(1);
 	}
 	vm_init();
-	vm_loader_error_t ret = vm_loader_load(image.data,image.size);
-	switch(ret){
+	vm_loader_error_t ret = vm_loader_load(image.data, image.size);
+	switch (ret) {
 		case VM_LOADER_ERROR_MAGICDWORD:
 			puts("invalid magic number");
 			exit(1);
 		case VM_LOADER_ERROR_SECTION:
-			printf("unknown section: '%s'\n",(char*)vm_loader_error_data);
+			printf("unknown section: '%s'\n", (char*)vm_loader_error_data);
 			exit(1);
 		case VM_LOADER_ERROR_EXTERN:
 			printf("unresolved extern: '");
@@ -105,9 +134,5 @@ int main(){
 			break;
 	}
 	vm_call(0);
-	vm_exception_t e = vm_run();
-	if(e != VM_NONE_E){
-		print_exception(e);
-	}
-	return 0;
+	return !run();
 }

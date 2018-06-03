@@ -10,4 +10,4 @@ typedef enum {
 } vm_loader_error_t;
 
 extern void* vm_loader_error_data;
-vm_loader_error_t vm_loader_load(uint8_t* data, uint32_t size);
+vm_loader_error_t vm_loader_load(const uint8_t* data, uint32_t size);

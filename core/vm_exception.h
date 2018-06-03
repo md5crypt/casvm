@@ -10,7 +10,7 @@ typedef enum {
 	VM_USER_E,
 	VM_OOB_E,
 	VM_TYPE_E,
-	VM_ARRITY_E,
+	VM_ARITY_E,
 	VM_IMMUTABLE_E,
 	VM_INTERNAL_E
 } vm_exception_t;
@@ -26,6 +26,6 @@ void vm_exception_type(vm_type_t actual, vm_type_t expected);
 
 void vm_exception_user(wstring_t* message);
 
-void vm_exception_arrity(uint32_t actual, uint32_t expected);
+void vm_exception_arity(uint32_t actual, uint32_t expected);
 
 const vm_exception_data_t* vm_exception_data_get();
