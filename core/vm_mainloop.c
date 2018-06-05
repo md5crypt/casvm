@@ -479,16 +479,14 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					ERROR(VM_TYPE_E);
 				}
 				break;
-			case VM_OP_ASSERT_ARG_TYPE:
-				if (opcode.o16.value < (int32_t)arguments) {
-					vm_exception_oob(opcode.o16.value, arguments);
-					ERROR(VM_OOB_E);
-				}
-				if (!VM_ISTYPE((base - opcode.o16.value - 1)->type, opcode.o16.type)) {
-					vm_exception_type((base - opcode.o16.value - 1)->type, opcode.o16.type);
+			case VM_OP_ASSERT_TYPE_SOFT: {
+				vm_type_t type = (base + opcode.o16.value)->type;
+				if (type != VM_UNDEFINED_T && !VM_ISTYPE(type, opcode.o16.type)) {
+					vm_exception_type((base + opcode.o16.value)->type, opcode.o16.type);
 					ERROR(VM_TYPE_E);
 				}
 				break;
+			}
 			case VM_OP_ASSERT_ARITY_EQ:
 				if (arguments != (uint32_t)opcode.o24.value) {
 					vm_exception_arity(arguments, opcode.o24.value);
