@@ -378,8 +378,10 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 							GROW_THREAD(1);
 						*(top+1) = (vm_variable_t) { .type=VM_UNDEFINED_T, .data.i=0 };
 						vm_exception_t e = hashmap->code.native(top,args);
-						if (e != VM_NONE_E)
+						if (e != VM_NONE_E) {
+							top += 1;
 							ERROR(e);
+						}
 						for (uint32_t i = 0; i < args; i++)
 							vm_variable_dereference(*(top-i-1));
 						*(top-args) = top[1];
@@ -403,7 +405,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				*((vm_stackframe_t*)top) = CURRENT_STACKFRAME();
 				arguments = opcode.o24.value;
 				pc = vm_progmem+func->code.address;
-				base = top;	
+				base = top;
 				break;
 			} case VM_OP_CALL_ASYNC: {
 				SOFT_ASSERT_TYPE(top, VM_FUNCTION_T);
@@ -430,7 +432,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					*top = child->stack->variable;
 					vm_variable_reference(*top);
 					vm_dereference(child,VM_THREAD_T);
-				} else {	
+				} else {
 					pc -= 1;
 					vm_thread_wait(thread,child);
 					ERROR(VM_YIELD_E);
