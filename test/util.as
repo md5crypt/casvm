@@ -45,11 +45,10 @@ namespace main
 		else
 			func
 		memstat usage
-		for i in 0 : {length reference}
-			if (reference i) != (usage i)
-				print "memstat before:" reference
-				print "memstat after: " usage
-				throw "Memory leak detected"
+		if !{array.compare reference usage}
+			print "memstat before:" reference
+			print "memstat after: " usage
+			throw "Memory leak detected"
 
 	function enter map:namespace
 		for e in {hashmap.values map}

@@ -9,9 +9,10 @@
 #define VM_ISTYPE(who, what) (vm_type_matrix[VM_TYPE_COUNT*who + what])
 #define VM_CONSTANT 0xFFFFFFFF
 #define VM_VARIABLE(_type) ((vm_variable_t) {.type = (_type)})
-#define VM_VARIABLE_INT(_type, value) ((vm_variable_t) {.type = (_type), .data.i = (value)})
+#define VM_VARIABLE_INTEGER(value) ((vm_variable_t) {.type = VM_INTEGER_T, .data.i = (value)})
+#define VM_VARIABLE_BOOL(value) ((vm_variable_t) {.type = VM_BOOLEAN_T, .data.i = (value)})
+#define VM_VARIABLE_FLOAT(value) ((vm_variable_t) {.type = VM_FLOAT_T, .data.f = (value)})
 #define VM_VARIABLE_MMID(_type, value) ((vm_variable_t) {.type = (_type), .data.m = (value)})
-#define VM_VARIABLE_FLOAT(_type, value) ((vm_variable_t) {.type = (_type), .data.f = (value)})
 
 typedef struct {
 	vm_type_t type;

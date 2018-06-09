@@ -12,6 +12,16 @@ namespace array
 	extern find '__arrayFind'
 	extern expand '__arrayExpand'
 	extern reverse '__arrayReverse'
+	function compare a:array b:array n?:integer
+		local la = {length a}
+		local lb = {length b}
+		if {typeof n} == "undefined"
+			if la != lb return false
+			set n = la
+		for i in 0 : n
+			if (a i) != (b i) return false
+		return true
+
 	function join A:array glue?:string
 		local n = {length A}
 		if n == 0

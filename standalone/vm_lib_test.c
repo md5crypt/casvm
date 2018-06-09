@@ -35,7 +35,7 @@ vm_exception_t vm_lib_mem_stat(vm_variable_t* top, uint32_t arguments) {
 		THROW("invalid array size");
 	}
 	for (uint32_t i = 0; i < size; i++) {
-		vm_array_set(array, i, VM_VARIABLE_INT(VM_INTEGER_T, stat[i]));
+		vm_array_set(array, i, VM_VARIABLE_INTEGER(stat[i]));
 	}
 	if (arguments == 0) {
 		top[1] = VM_VARIABLE_MMID(VM_ARRAY_T, id);
