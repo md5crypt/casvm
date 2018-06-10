@@ -161,7 +161,7 @@ inline static uint32_t eqeq(vm_variable_t* top) {
 }
 
 inline static uint32_t eq(vm_variable_t* top) {
-	if ((top+0)->type == top[-1].type && top[0].data.i == top[-1].data.i) {
+	if ((top[0].type == top[-1].type) && (top[0].data.i == top[-1].data.i)) {
 		vm_variable_dereference(*(top-0));
 		vm_variable_dereference(*(top-1));
 		return 1;
@@ -245,14 +245,13 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					top -= 1;
 				}else if (top[-1].type == VM_STRING_T) {
 					ASSERT_TYPE(top-0, VM_INTEGER_T);
-					vm_variable_t tmp = vm_string_get(VM_CAST_STRING(top-1), top[0].data.i);
-					if (tmp.type == VM_INVALID_T) {
-						vm_exception_oob(top[0].data.i, VM_CAST_STRING(top+1)->size);
-						ERROR(VM_OOB_E);
-					}
-					vm_variable_dereference(top[-1]);
-					top[-1] = tmp;
+					vm_string_t* string = VM_CAST_STRING(top - 1);
+					vm_exception_t e = vm_string_get(string, top[0].data.i, top - 1);
+					vm_dereference(string, VM_STRING_T);
 					top -= 1;
+					if (e != VM_NONE_E) {
+						ERROR(e);
+					}
 				} else {
 					vm_exception_type(top[-1].type, VM_INDEXABLE_T);
 					ERROR(VM_TYPE_E);

@@ -102,7 +102,7 @@ vm_exception_t vm_lib_array_slice(vm_variable_t* top, uint32_t arguments) {
 	}
 	vm_mmid_t id = vm_array_slice(array, start, stop);
 	if (id == MMID_NULL) {
-		top[1].type = VM_INVALID_T;
+		top[1] = VM_VARIABLE(VM_INVALID_T);
 		return VM_OOB_E;
 	}
 	top[1] = VM_VARIABLE_MMID(VM_ARRAY_T, id);

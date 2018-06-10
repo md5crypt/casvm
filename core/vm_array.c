@@ -23,7 +23,7 @@ vm_exception_t vm_array_get(const vm_array_t* array, int32_t pos, vm_variable_t*
 		pos += array->used;
 	}
 	if ((pos < 0) || ((uint32_t)pos >= array->used)) {
-		value->type = VM_INVALID_T;
+		value[0] = VM_VARIABLE(VM_INVALID_T);
 		vm_exception_oob(pos, array->used);
 		return VM_OOB_E;
 	}
@@ -45,7 +45,7 @@ vm_mmid_t vm_array_create(uint32_t size) {
 	ptr->used = size;
 	ptr->offset = 0;
 	for (uint32_t i = 0; i < size; i++) {
-		ptr->data[i].type = VM_UNDEFINED_T;
+		ptr->data[i] = VM_VARIABLE(VM_UNDEFINED_T);
 	}
 	return id;
 }
@@ -123,7 +123,7 @@ vm_array_t* vm_array_resize(vm_array_t* array, uint32_t size) {
 		uint32_t diff = size - array->used;
 		uint32_t offset = array->offset + array->used;
 		while (diff--) {
-			array->data[offset & (array->size - 1)].type = VM_UNDEFINED_T;
+			array->data[offset & (array->size - 1)] = VM_VARIABLE(VM_UNDEFINED_T);
 			offset += 1;
 		}
 	}
@@ -229,7 +229,7 @@ int32_t vm_array_find(vm_array_t* array, vm_variable_t var, int32_t offset) {
 vm_exception_t vm_array_pop(vm_array_t* array, vm_variable_t* value) {
 	if (array->used == 0) {
 		vm_exception_oob(0, 0);
-		value->type = VM_UNDEFINED_T;
+		value[0] = VM_VARIABLE(VM_UNDEFINED_T);
 		return VM_OOB_E;
 	}
 	array->used -= 1;
@@ -251,7 +251,7 @@ vm_array_t* vm_array_unshift(vm_array_t* array, vm_variable_t value) {
 vm_exception_t vm_array_shift(vm_array_t* array, vm_variable_t* value) {
 	if (array->used == 0) {
 		vm_exception_oob(0, 0);
-		value->type = VM_UNDEFINED_T;
+		value[0] = VM_VARIABLE(VM_UNDEFINED_T);
 		return VM_OOB_E;
 	}
 	value[0] = array->data[array->offset & (array->size - 1)];

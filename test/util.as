@@ -1,3 +1,13 @@
+function __mod_leaks_hashmap func:function
+	if !{hashmap.has func "leaks"}
+		set func.leaks = 0
+	set func.leaks = func.leaks | (1<<1)
+
+function __mod_leaks_const func:function
+	if !{hashmap.has func "leaks"}
+		set func.leaks = 0
+	set func.leaks = func.leaks | (1<<0) | (1<<5)
+
 function __mod_throws_oob func:function
 	set func.throws = "OUT-OF-BOUNDS"
 
@@ -45,10 +55,15 @@ namespace main
 		else
 			func
 		memstat usage
-		if !{array.compare reference usage}
-			print "memstat before:" reference
-			print "memstat after: " usage
-			throw "Memory leak detected"
+		local leaks = func.leaks || 0
+		for i in 0:{length reference}
+			if !(leaks&(1<<i)) && (reference i) != (usage i)
+				print "memstat before:" {memstr reference}
+				print "memstat after:" {memstr usage}
+				throw "Memory leak detected"
+
+	function memstr a
+		return "{ c:$(a 0), h:$(a 1), a:$(a 2), s:$(a 3), t:$(a 4), m:$(a 5) }"
 
 	function enter map:namespace
 		for e in {hashmap.values map}

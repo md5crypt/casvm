@@ -54,6 +54,7 @@ namespace string
 		return "<:${typeof value}>"
 
 namespace hashmap
+	extern has '__hashmapHas'
 	extern keys '__hashmapKeys'
 	extern values '__hashmapValues'
 	function path node:hashmap
@@ -79,3 +80,11 @@ function print ...
 		if {typeof s} != "string"
 			set s = {string.from s}
 		stdout s + (i == cnt-1 ? "\n" : " ")
+
+namespace stdlib
+	import [
+		hashmap
+		string
+		array
+		length
+	] from root

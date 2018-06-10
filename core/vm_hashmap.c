@@ -81,7 +81,7 @@ void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value) {
 void vm_hashmap_get(const vm_hashmap_t* map, vm_mmid_t key, vm_variable_t* value) {
 	const vm_hashmap_pair_t* pair = get_const(map, key);
 	if ((pair->key == MMID_NULL) || (pair->key == TOMBSTONE)) {
-		value->type = VM_UNDEFINED_T;
+		value[0] = VM_VARIABLE(VM_UNDEFINED_T);
 	} else {
 		vm_variable_reference(pair->data);
 		value[0] = pair->data;
