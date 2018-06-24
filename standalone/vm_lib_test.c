@@ -42,3 +42,9 @@ vm_exception_t vm_lib_mem_stat(vm_variable_t* top, uint32_t arguments) {
 	}
 	return VM_NONE_E;
 }
+
+vm_exception_t vm_lib_dbgbrk(vm_variable_t* top, uint32_t arguments) {
+	UNUSED(top);
+	UNUSED(arguments);
+	return VM_NONE_E;
+}

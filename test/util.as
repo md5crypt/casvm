@@ -8,6 +8,10 @@ function __mod_leaks_const func:function
 		set func.leaks = 0
 	set func.leaks = func.leaks | (1<<0) | (1<<5)
 
+
+function __mod_throws_none func:function
+	set func.throws = "NONE"
+
 function __mod_throws_oob func:function
 	set func.throws = "OUT-OF-BOUNDS"
 
@@ -49,7 +53,7 @@ namespace main
 			trystart
 			local e = {await {async func}}
 			tryend
-			if e != func.throws
+			if (e != func.throws) && !((func.throws == "NONE") && !e)
 				throw "Expected exception '$func.throws', got '$(e || "NONE")'"
 			unset e
 		else
@@ -72,3 +76,4 @@ namespace main
 			else throw "bad test tree element $e"
 
 	enter root.tests
+	print "done"

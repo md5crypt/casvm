@@ -21,15 +21,16 @@ namespace array
 		for i in 0 : n
 			if (a i) != (b i) return false
 		return true
-
 	function join A:array glue?:string
 		local n = {length A}
 		if n == 0
 			return ''
 		set glue = glue || ' '
-		local str = {string.from (A 0)}
+		local e = (A 0)
+		local str = {istype e "array"} ? '<:array>' : {string.from e}
 		for i in 1:n
-			set str = "$str$glue${string.from (A i)}"
+			set e = (A i)
+			set str = "$str$glue$({istype e "array"} ? '<:array>' : {string.from (A i)})"
 		return str
 
 namespace string
@@ -52,6 +53,15 @@ namespace string
 		if {istype value 'hashmap'}
 			return "<${hashmap.path value}:${typeof value}>"
 		return "<:${typeof value}>"
+	function split str:string glue:string
+		local out = []
+		local offset = 0
+		while true
+			local p = {string.find str glue offset}
+			if p < 0
+				return {array.push out {string.slice str offset}}
+			array.push out {string.slice str offset p}
+			set offset = p + 1
 
 namespace hashmap
 	extern has '__hashmapHas'
@@ -73,6 +83,7 @@ extern dtos '__dtos'
 extern trystart '__tryStart'
 extern tryend '__tryEnd'
 extern memstat '__memStat'
+extern dbgbrk '__dbgbrk'
 function print ...
 	local cnt = {_argc}
 	for i in 0:cnt
