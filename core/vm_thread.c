@@ -4,46 +4,65 @@
 
 #include <string.h>
 
-static vm_mmid_t active_stack = MMID_NULL;
-static vm_mmid_t active_queue = MMID_NULL;
+static struct {
+	vm_mmid_t head;
+	vm_mmid_t tail;
+} active_queue = {MMID_NULL, MMID_NULL};
 
-void vm_thread_wait(vm_thread_t* thread, vm_thread_t* queue) {
-	vm_reference(thread);
-	thread->next = queue->queue;
-	queue->queue = PTR_TO_MMID(thread);
+static vm_thread_t* traverse_backward(vm_thread_t* thread) {
+	vm_thread_t* ptr = thread;
+	if (thread->prev != MMID_NULL) {
+		ptr = MMID_TO_PTR(thread->prev, vm_thread_t*);
+		while (ptr->prev != MMID_NULL) {
+			ptr = MMID_TO_PTR(ptr->prev, vm_thread_t*);
+		}
+	}
+	return ptr;
 }
 
 vm_mmid_t vm_thread_create(uint32_t size) {
-	uint32_t bsize = size<THREAD_INITIAL_SIZE?THREAD_INITIAL_SIZE:npot(size);
-	vm_mmid_t id = vm_memory_allocate(&vm_mem_thread,bsize*sizeof(vm_variable_t)+sizeof(vm_thread_t));
+	uint32_t bsize = size < THREAD_INITIAL_SIZE ? THREAD_INITIAL_SIZE : npot(size);
+	vm_mmid_t id = vm_memory_allocate(
+		&vm_mem_thread,
+		(bsize * sizeof(vm_variable_t)) + sizeof(vm_thread_t)
+	);
 	vm_thread_t* ptr = MMID_TO_PTR(id, vm_thread_t*);
 	ptr->rcnt = 1;
 	ptr->size = bsize;
 	ptr->top = 0;
 	ptr->next = MMID_NULL;
+	ptr->prev = MMID_NULL;
 	ptr->queue = MMID_NULL;
 	ptr->state = VM_THREAD_STATE_PAUSED;
 	return id;
 }
 
 vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount) {
-	vm_mmid_t oldid = PTR_TO_MMID(thread);
-	vm_mmid_t newid = vm_thread_create(thread->size < amount ? thread->size+amount : thread->size*2);
-	vm_thread_t* oldptr = MMID_TO_PTR(oldid,vm_thread_t*);
-	vm_thread_t* newptr = MMID_TO_PTR(newid,vm_thread_t*);
-	newptr->rcnt = oldptr->rcnt;
-	newptr->top = oldptr->top;
-	newptr->next = oldptr->next;
-	newptr->queue = oldptr->queue;
-	newptr->state = oldptr->state;
-	memcpy(newptr->stack,oldptr->stack,sizeof(vm_variable_t)*oldptr->size);
-	vm_memory_replace(&vm_mem_thread, oldid, newid);
-	return newptr;
+	vm_mmid_t old_id = PTR_TO_MMID(thread);
+	vm_mmid_t new_id = vm_thread_create(thread->size < amount ? thread->size + amount : thread->size * 2);
+	vm_thread_t* old_ptr = MMID_TO_PTR(old_id, vm_thread_t*);
+	vm_thread_t* new_ptr = MMID_TO_PTR(new_id, vm_thread_t*);
+	new_ptr->rcnt = old_ptr->rcnt;
+	new_ptr->top = old_ptr->top;
+	new_ptr->next = old_ptr->next;
+	new_ptr->prev = old_ptr->prev;
+	new_ptr->queue = old_ptr->queue;
+	new_ptr->state = old_ptr->state;
+	memcpy(new_ptr->stack, old_ptr->stack, sizeof(vm_variable_t) * old_ptr->size);
+	vm_memory_replace(&vm_mem_thread, old_id, new_id);
+	return new_ptr;
 }
 
 bool vm_thread_unwind(vm_thread_t* thread) {
 	if (thread->top != 0) {
 		uint32_t base = thread->stack[thread->top].frame.base;
+		if (base == 0) {
+			if (thread->top != 0) {
+				vm_variable_dereference(thread->stack[0].variable);
+			} else {
+				return true;
+			}
+		}
 		uint32_t top = thread->top - 1;
 		while (top > base) {
 			vm_variable_dereference(thread->stack[top].variable);
@@ -56,62 +75,86 @@ bool vm_thread_unwind(vm_thread_t* thread) {
 }
 
 void vm_thread_kill(vm_thread_t* thread, vm_variable_t value) {
-	if (thread->state == VM_THREAD_STATE_FINISHED)
+	if (thread->state == VM_THREAD_STATE_FINISHED) {
 		return;
-	if (thread->queue != MMID_NULL) {
-		vm_thread_push(MMID_TO_PTR(thread->queue, vm_thread_t*));
-		thread->queue = MMID_NULL;
 	}
+	if (active_queue.head == PTR_TO_MMID(thread)) {
+		active_queue.head = thread->next;
+	}
+	if (active_queue.tail == PTR_TO_MMID(thread)) {
+		active_queue.tail = thread->prev;
+	}
+	if (thread->next != MMID_NULL) {
+		vm_thread_t* next = MMID_TO_PTR(thread->next, vm_thread_t*);
+		if (next->queue == PTR_TO_MMID(thread)) {
+			next->queue = thread->prev;
+		} else {
+			next->prev = thread->prev;
+		}
+	}
+	if (thread->prev != MMID_NULL) {
+		vm_thread_t* prev = MMID_TO_PTR(thread->prev, vm_thread_t*);
+		prev->next = thread->next;
+	}
+	thread->next = MMID_NULL;
+	thread->prev = MMID_NULL;
+	vm_thread_dequeue(thread);
 	while (vm_thread_unwind(thread));
 	thread->stack[0].variable = value;
 	thread->state = VM_THREAD_STATE_FINISHED;
 }
 
 void vm_thread_free(vm_thread_t* thread) {
-	if (thread->state == VM_THREAD_STATE_FINISHED) {
-		vm_variable_dereference(thread->stack[0].variable);
-	} else {
-		while (vm_thread_unwind(thread));
-	}
+	vm_thread_kill(thread, VM_VARIABLE(VM_UNDEFINED_T));
+	vm_variable_dereference(thread->stack[0].variable);
 	vm_memory_free(&vm_mem_thread, PTR_TO_MMID(thread));
 }
 
-void vm_thread_push(vm_thread_t* thread) {
-	if (thread->next) {
-		vm_thread_t* ptr = MMID_TO_PTR(thread->next,vm_thread_t*);
-		while (ptr->next != MMID_NULL)
-			ptr = MMID_TO_PTR(thread->queue,vm_thread_t*);
-		ptr->next = active_stack;
-	} else {
-		thread->next = active_stack;
+void vm_thread_wait(vm_thread_t* thread, vm_thread_t* queue) {
+	vm_mmid_t id = PTR_TO_MMID(thread);
+	if (queue->queue != MMID_NULL) {
+		vm_thread_t* tail = MMID_TO_PTR(queue->queue, vm_thread_t*);
+		tail->next = id;
+		thread->prev = queue->queue;
+		thread->next = PTR_TO_MMID(queue);
 	}
-	active_stack = PTR_TO_MMID(thread);
+	queue->queue = id;
+}
+
+void vm_thread_dequeue(vm_thread_t* thread) {
+	if (thread->queue != MMID_NULL) {
+		vm_thread_t* tail = MMID_TO_PTR(thread->queue, vm_thread_t*);
+		tail->next = MMID_NULL;
+		vm_thread_push(tail);
+		thread->queue = MMID_NULL;
+	}
+}
+
+void vm_thread_push(vm_thread_t* thread) {
+	vm_thread_t* first = traverse_backward(thread);
+	if (active_queue.tail == MMID_NULL) {
+		active_queue.head = PTR_TO_MMID(first);
+	} else {
+		vm_thread_t* tail = MMID_TO_PTR(active_queue.tail, vm_thread_t*);
+		tail->next = PTR_TO_MMID(first);
+		first->prev = active_queue.tail;
+	}
+	active_queue.tail = PTR_TO_MMID(thread);
 }
 
 vm_mmid_t vm_thread_pop() {
-	if (active_queue == MMID_NULL) {
-		if (active_stack == MMID_NULL)
-			return MMID_NULL;
-		vm_mmid_t head_id = active_stack;
-		vm_thread_t* tail = MMID_TO_PTR(head_id,vm_thread_t*);
-		if (tail->next != MMID_NULL) {
-			vm_mmid_t id = tail->next;
-			tail->next = MMID_NULL;
-			while (id != MMID_NULL) {
-				vm_thread_t* ptr = MMID_TO_PTR(id,vm_thread_t*);
-				vm_mmid_t next_id = ptr->next;
-				ptr->next = head_id;
-				head_id = id;
-				id = next_id;
-			}
-		}
-		active_queue = head_id;
-		active_stack = MMID_NULL;
+	if (active_queue.head == MMID_NULL) {
+		return MMID_NULL;
 	}
-	vm_mmid_t id = active_queue;
-	vm_thread_t* thread = MMID_TO_PTR(id,vm_thread_t*);
-	active_queue = thread->next;
-	thread->next = MMID_NULL;
-	return id;
+	vm_mmid_t ret = active_queue.head;
+	vm_thread_t* head = MMID_TO_PTR(ret, vm_thread_t*);
+	active_queue.head = head->next;
+	if (head->next != MMID_NULL) {
+		MMID_TO_PTR(head->next, vm_thread_t*)->prev = MMID_NULL;
+		head->next = MMID_NULL;
+	} else {
+		active_queue.tail = MMID_NULL;
+	}
+	return ret;
 }
 

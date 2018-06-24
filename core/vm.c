@@ -80,13 +80,11 @@ vm_exception_t vm_run() {
 			last_fault.exception = e;
 			return e;
 		}
-		vm_dereference_m(thread_id, VM_THREAD_T);
 	}
 }
 
 void vm_fault_recover() {
 	if (last_fault.exception != VM_NONE_E) {
-		vm_dereference_m(last_fault.thread, VM_THREAD_T);
 		last_fault.exception = VM_NONE_E;
 	}
 }
