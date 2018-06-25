@@ -48,32 +48,38 @@ void vm_init() {
 
 void vm_call(uint32_t address) {
 	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
-	if (thread->state == VM_THREAD_STATE_FINISHED)
+	if (thread->state == VM_THREAD_STATE_FINISHED) {
 		vm_variable_dereference(thread->stack->variable);
-	thread->stack[0].frame = VM_PACK_STACKFRAME(0,0,0);
-	thread->stack[1].frame = VM_PACK_STACKFRAME(address,0,0);
+	}
+	thread->stack[0].frame = VM_PACK_STACKFRAME(0, 0, 0);
+	thread->stack[1].frame = VM_PACK_STACKFRAME(address, 0, 0);
 	thread->top = 1;
 	thread->state = VM_THREAD_STATE_PAUSED;
 	vm_thread_push(thread);
 }
 
 uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b) {
-	if (a.type != b.type)
+	if (a.type != b.type) {
 		return 0;
-	if (a.data.i == b.data.i)
+	}
+	if (a.data.i == b.data.i) {
 		return 1;
-	if (a.type == VM_STRING_T)
-		return vm_string_cmp(VM_CAST_STRING(&a),VM_CAST_STRING(&b));
+	}
+	if (a.type == VM_STRING_T) {
+		return vm_string_cmp(VM_CAST_STRING(&a), VM_CAST_STRING(&b));
+	}
 	return 0;
 }
 
 vm_exception_t vm_run() {
-	if (last_fault.exception != VM_NONE_E)
+	if (last_fault.exception != VM_NONE_E) {
 		return last_fault.exception;
+	}
 	while (true) {
 		vm_mmid_t thread_id = vm_thread_pop();
-		if (thread_id == MMID_NULL)
+		if (thread_id == MMID_NULL) {
 			return VM_NONE_E;
+		}
 		vm_exception_t e = vm_mainloop(thread_id);
 		if (e != VM_YIELD_E && e != VM_NONE_E) {
 			last_fault.thread = thread_id;

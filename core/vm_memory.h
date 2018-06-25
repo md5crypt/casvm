@@ -1,9 +1,9 @@
 #pragma once
 #include <inttypes.h>
 
-#define MMID_NULL ((vm_mmid_t)0)
-#define MMID_TO_PTR(a,b) ((b)vm_memmap.bottom[a])
-#define PTR_TO_MMID(a) (((vm_memblock_t*)((uint8_t*)a-sizeof(vm_memblock_t)))->id)
+#define MMID_NULL          ((vm_mmid_t)0)
+#define MMID_TO_PTR(a, b)  ((b)vm_memmap.bottom[a])
+#define PTR_TO_MMID(a)     (((vm_memblock_t*)((uint8_t*)a - sizeof(vm_memblock_t)))->id)
 
 typedef uint32_t vm_mmid_t;
 

@@ -6,13 +6,13 @@
 #include "vm_memory.h"
 #include "vm_symbols.h"
 
-#define VM_ISTYPE(who, what) (vm_type_matrix[VM_TYPE_COUNT*who + what])
-#define VM_CONSTANT 0xFFFFFFFF
-#define VM_VARIABLE(_type) ((vm_variable_t) {.type = (_type), .data.i = 0})
-#define VM_VARIABLE_INTEGER(value) ((vm_variable_t) {.type = VM_INTEGER_T, .data.i = (value)})
-#define VM_VARIABLE_BOOL(value) ((vm_variable_t) {.type = VM_BOOLEAN_T, .data.i = (value)})
-#define VM_VARIABLE_FLOAT(value) ((vm_variable_t) {.type = VM_FLOAT_T, .data.f = (value)})
-#define VM_VARIABLE_MMID(_type, value) ((vm_variable_t) {.type = (_type), .data.m = (value)})
+#define VM_ISTYPE(who, what)            (vm_type_matrix[(VM_TYPE_COUNT * who) + what])
+#define VM_CONSTANT                     0xFFFFFFFF
+#define VM_VARIABLE(_type)              ((vm_variable_t) {.type = (_type), .data.i = 0})
+#define VM_VARIABLE_INTEGER(value)      ((vm_variable_t) {.type = VM_INTEGER_T, .data.i = (value)})
+#define VM_VARIABLE_BOOL(value)         ((vm_variable_t) {.type = VM_BOOLEAN_T, .data.i = (value)})
+#define VM_VARIABLE_FLOAT(value)        ((vm_variable_t) {.type = VM_FLOAT_T, .data.f = (value)})
+#define VM_VARIABLE_MMID(_type, value)  ((vm_variable_t) {.type = (_type), .data.m = (value)})
 
 typedef struct {
 	vm_type_t type;
@@ -62,24 +62,27 @@ inline static void vm_make_const(vm_mmid_t id) {
 }
 
 inline static void vm_reference(void* ptr) {
-	if (((uint32_t*)ptr)[0] != VM_CONSTANT)
+	if (((uint32_t*)ptr)[0] != VM_CONSTANT) {
 		((uint32_t*)ptr)[0] += 1;
+	}
 }
 
 inline static void vm_reference_m(vm_mmid_t id) {
 	uint32_t* cnt = MMID_TO_PTR(id, uint32_t*);
-	if (cnt[0] != VM_CONSTANT)
-		cnt[0]++;
+	if (cnt[0] != VM_CONSTANT) {
+		cnt[0] += 1;
+	}
 }
 
 inline static void vm_dereference(void* ptr, vm_type_t type) {
 	vm_destructor_t destructor = vm_destructor_lut[type];
 	if (destructor) {
 		uint32_t cnt = ((uint32_t*)ptr)[0];
-		if (cnt <= 1)
+		if (cnt <= 1) {
 			destructor(ptr);
-		else if (cnt != VM_CONSTANT)
-			((uint32_t*)ptr)[0] = cnt-1;
+		} else if (cnt != VM_CONSTANT) {
+			((uint32_t*)ptr)[0] = cnt - 1;
+		}
 	}
 }
 
@@ -88,20 +91,22 @@ inline static void vm_dereference_m(vm_mmid_t id, vm_type_t type) {
 	if (destructor) {
 		void* ptr = MMID_TO_PTR(id, void*);
 		uint32_t cnt = ((uint32_t*)ptr)[0];
-		if (cnt <= 1)
+		if (cnt <= 1) {
 			destructor(ptr);
-		else if (cnt != VM_CONSTANT)
-			((uint32_t*)ptr)[0] = cnt-1;
+		} else if (cnt != VM_CONSTANT) {
+			((uint32_t*)ptr)[0] = cnt - 1;
+		}
 	}
 }
 
 inline static void vm_variable_reference(vm_variable_t v) {
-	if (vm_destructor_lut[v.type])
+	if (vm_destructor_lut[v.type]) {
 		vm_reference_m(v.data.m);
+	}
 }
 
 inline static void vm_variable_dereference(vm_variable_t v) {
-	vm_dereference_m(v.data.m,v.type);
+	vm_dereference_m(v.data.m, v.type);
 }
 
 bool vm_fault_trace(vm_symbols_location_t* loc);

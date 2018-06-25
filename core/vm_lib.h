@@ -7,38 +7,38 @@
 #include "vm_array.h"
 #include "vm_hashmap.h"
 
-#define ASSERT_ARITY(n) if (arguments!=n) { \
-	vm_exception_arity(arguments, n);     \
-	return VM_ARITY_E;                    \
+#define ASSERT_ARITY(n) if (arguments != n) { \
+	vm_exception_arity(arguments, n); \
+	return VM_ARITY_E; \
 }
 
 #define ASSERT_ARITY_GE(a) if (arguments < a) { \
-	vm_exception_arity(arguments, a);         \
-	return VM_ARITY_E;                        \
+	vm_exception_arity(arguments, a); \
+	return VM_ARITY_E; \
 }
 
 #define ASSERT_ARITY_LE(a) if (arguments > a) { \
-	vm_exception_arity(arguments, a);         \
-	return VM_ARITY_E;                        \
+	vm_exception_arity(arguments, a); \
+	return VM_ARITY_E; \
 }
 
-#define ASSERT_ARITY_RANGE(a, b)           \
-	if (arguments < a) {                     \
+#define ASSERT_ARITY_RANGE(a, b) \
+	if (arguments < a) { \
 		vm_exception_arity(arguments, a); \
-		return VM_ARITY_E;                \
-	} else if (arguments > b) {               \
+		return VM_ARITY_E; \
+	} else if (arguments > b) { \
 		vm_exception_arity(arguments, b); \
-		return VM_ARITY_E;                \
+		return VM_ARITY_E; \
 	}
 
-#define ASSERT_TYPE(n,t) if ((top-(n))->type != t) {    \
-	vm_exception_type(t,(top-(n))->type);             \
-	return VM_TYPE_E;                                 \
+#define ASSERT_TYPE(n, t) if (top[-(n)].type != t) { \
+	vm_exception_type(t, top[-(n)].type); \
+	return VM_TYPE_E; \
 }
 
-#define ASSERT_TYPE_WEAK(n,t) if (!VM_ISTYPE((top-(n))->type,t)) {    \
-	vm_exception_type(t,(top-(n))->type);                           \
-	return VM_TYPE_E;                                               \
+#define ASSERT_TYPE_WEAK(n, t) if (!VM_ISTYPE(top[-(n)].type, t)) { \
+	vm_exception_type(t, top[-(n)].type); \
+	return VM_TYPE_E; \
 }
 
 #define THROW(cstr) \
