@@ -23,7 +23,7 @@ vm_exception_t vm_string_get(const vm_string_t* a, int32_t index, vm_variable_t*
 
 vm_mmid_t vm_string_concat(const vm_string_t* a, const vm_string_t* b);
 
-uint32_t vm_string_cmp(const vm_string_t* a, const vm_string_t* b);
+bool vm_string_cmp(const vm_string_t* a, const vm_string_t* b);
 
 vm_mmid_t vm_string_intern(vm_string_t* str);
 

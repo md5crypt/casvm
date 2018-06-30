@@ -156,11 +156,8 @@ vm_mmid_t vm_string_concat(const vm_string_t* s1, const vm_string_t* s2) {
 	return id;
 }
 
-uint32_t vm_string_cmp(const vm_string_t* a, const vm_string_t* b) {
-	if (a == b) {
-		return 1;
-	}
-	return (a->size == b->size) && !memcmp(a->data, b->data, a->size * 2);
+bool vm_string_cmp(const vm_string_t* a, const vm_string_t* b) {
+	return (a == b) || ((a->size == b->size) && !memcmp(a->data, b->data, a->size * 2));
 }
 
 vm_exception_t vm_string_get(const vm_string_t* str, int32_t index, vm_variable_t* value) {

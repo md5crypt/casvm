@@ -81,7 +81,7 @@ static vm_loader_error_t section_loader_object(const uint8_t* data, uint32_t siz
 			type = VM_NATIVE_T;
 		}
 		uint32_t mmid = vm_hashmap_create(8, type, objects->name, objects->parent, address);
-		if (objects->parent == 0xFFFFFFFF) {
+		if (objects->parent == MMID_NULL) {
 			vm_root = mmid;
 		}
 		objects += 1;
