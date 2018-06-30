@@ -19,14 +19,16 @@ static inline const vm_hashmap_pair_t* get_const(const vm_hashmap_t* map, vm_mmi
 }
 
 static void grow(vm_hashmap_t* map) {
-	vm_mmid_t id = vm_hashmap_create(
+	vm_mmid_t old_id = PTR_TO_MMID(map);
+	vm_mmid_t new_id = vm_hashmap_create(
 		(map->deleted > (map->used>>1))? map->size : (map->size<<1),
 		map->type,
 		map->name,
 		map->parent,
 		(void*)map->code.address
 	);
-	vm_hashmap_t* newmap = MMID_TO_PTR(id, vm_hashmap_t*);
+	map = MMID_TO_PTR(old_id, vm_hashmap_t*);
+	vm_hashmap_t* newmap = MMID_TO_PTR(new_id, vm_hashmap_t*);
 	for (uint32_t i = 0; i < map->size; i++) {
 		if (map->data[i].key != MMID_NULL && map->data[i].key != TOMBSTONE) {
 			vm_hashmap_pair_t* pair = get(newmap, map->data[i].key);
@@ -34,7 +36,7 @@ static void grow(vm_hashmap_t* map) {
 			newmap->used++;
 		}
 	}
-	vm_memory_replace(&vm_mem_hashmap, PTR_TO_MMID(map), id);
+	vm_memory_replace(&vm_mem_hashmap, old_id, new_id);
 }
 
 vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mmid_t parent, void* code) {
