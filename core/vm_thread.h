@@ -1,21 +1,17 @@
 #pragma once
 #include "vm.h"
 
-#define VM_PACK_STACKFRAME(_link,_base,_arguments) \
-	((vm_stackframe_t) { \
-		.link=(_link), \
-		.base=(_base), \
-		.arguments_low=((_arguments)&0xFF), \
-		.arguments_high=((_arguments)>>8) \
-	})
+#define VM_CAST_THREAD(var) MMID_TO_PTR((var)->data.m, vm_thread_t*)
 
-#define VM_CAST_THREAD(var) MMID_TO_PTR((var)->data.m,vm_thread_t*)
-
-typedef struct {
-	uint32_t link : 24;
-	uint32_t arguments_low : 8;
-	uint32_t base : 24;
-	uint32_t arguments_high : 8;
+typedef union {
+	struct {
+		uint32_t arguments;
+		uint32_t reserved;
+	} upper;
+	struct {
+		uint32_t base;
+		uint32_t link;
+	} lower;
 } vm_stackframe_t;
 
 typedef union {
@@ -49,3 +45,9 @@ void vm_thread_free(vm_thread_t* thread);
 void vm_thread_push(vm_thread_t* thread);
 void vm_thread_kill(vm_thread_t* thread, vm_variable_t value);
 bool vm_thread_unwind(vm_thread_t* thread);
+
+static inline void vm_thread_stackframe_pack(vm_stackframe_t* frame, uint32_t link, uint32_t base, uint32_t arguments) {
+	frame[0].lower.base = base;
+	frame[0].lower.link = link;
+	frame[1].upper.arguments = arguments;
+}

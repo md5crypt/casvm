@@ -54,24 +54,24 @@ vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount) {
 }
 
 bool vm_thread_unwind(vm_thread_t* thread) {
-	if (thread->top != 0) {
-		uint32_t base = thread->stack[thread->top].frame.base;
-		if (base == 0) {
-			if (thread->top != 0) {
-				vm_variable_dereference(thread->stack[0].variable);
-			} else {
-				return true;
+	uint32_t base = thread->stack[thread->top].frame.lower.base;
+	if (base == 0xFFFFFFFF) {
+		if (thread->top > 0) {
+			uint32_t top = thread->top;
+			while (top) {
+				top -= 1;
+				vm_variable_dereference(thread->stack[top].variable);
 			}
 		}
-		uint32_t top = thread->top - 1;
-		while (top > base) {
-			vm_variable_dereference(thread->stack[top].variable);
-			top -= 1;
-		}
-		thread->top = base;
-		return true;
+		return false;
 	}
-	return false;
+	uint32_t top = thread->top - 1;
+	while (top > (base + 1)) {
+		vm_variable_dereference(thread->stack[top].variable);
+		top -= 1;
+	}
+	thread->top = base;
+	return true;
 }
 
 void vm_thread_kill(vm_thread_t* thread, vm_variable_t value) {

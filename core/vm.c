@@ -51,9 +51,9 @@ void vm_call(uint32_t address) {
 	if (thread->state == VM_THREAD_STATE_FINISHED) {
 		vm_variable_dereference(thread->stack->variable);
 	}
-	thread->stack[0].frame = VM_PACK_STACKFRAME(0, 0, 0);
-	thread->stack[1].frame = VM_PACK_STACKFRAME(address, 0, 0);
-	thread->top = 1;
+	vm_thread_stackframe_pack(&thread->stack[0].frame, 0, 0xFFFFFFFF, 0);
+	vm_thread_stackframe_pack(&thread->stack[2].frame, address, 0, 0);
+	thread->top = 2;
 	thread->state = VM_THREAD_STATE_PAUSED;
 	vm_thread_push(thread);
 }
@@ -101,10 +101,6 @@ vm_mmid_t vm_fault_get_thread() {
 
 bool vm_fault_trace(vm_symbols_location_t* loc) {
 	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
-	if (thread->top != 0) {
-		vm_symbols_get_location(thread->stack[thread->top].frame.link, loc);
-		vm_thread_unwind(thread);
-		return true;
-	}
-	return false;
+	vm_symbols_get_location(thread->stack[thread->top].frame.lower.link, loc);
+	return vm_thread_unwind(thread);
 }

@@ -26,12 +26,16 @@
 
 #define ERROR(e) \
 	do{ \
-		top += 1; \
-		if (top >= end) { \
-			GROW_THREAD(1); \
+		if ((top + 2) >= end) { \
+			GROW_THREAD(2); \
 		} \
-		((vm_stackframe_t*)top)[0] = CURRENT_STACKFRAME(); \
-		thread->top = top - bottom; \
+		vm_thread_stackframe_pack( \
+			(vm_stackframe_t*)(top + 1), \
+			pc - vm_progmem, \
+			base - bottom, \
+			arguments \
+		); \
+		thread->top = top - bottom + 1; \
 		return e; \
 	}while (0)
 
@@ -110,8 +114,6 @@
 		(--top)->type = VM_BOOLEAN_T; \
 	}while (0)
 
-#define CURRENT_STACKFRAME()  VM_PACK_STACKFRAME(pc - vm_progmem, base - bottom, arguments)
-
 inline static bool test(vm_variable_t* top) {
 	bool result;
 	switch (top->type) {
@@ -172,15 +174,12 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 	vm_variable_t* bottom = (vm_variable_t*)thread->stack;
 	vm_variable_t* top = bottom + thread->top;
 	vm_variable_t* end = bottom + thread->size;
-	vm_variable_t* base = bottom + ((vm_stackframe_t*)top)->base;
-	const vm_opcode_t* pc = vm_progmem + ((vm_stackframe_t*)top)->link;
-	uint32_t arguments = (
-		((vm_stackframe_t*)top)->arguments_low |
-		(((vm_stackframe_t*)top)->arguments_high << 8)
-	);
+	vm_variable_t* base = bottom + ((vm_stackframe_t*)top)[0].lower.base;
+	const vm_opcode_t* pc = vm_progmem + ((vm_stackframe_t*)top)[0].lower.link;
+	uint32_t arguments = ((vm_stackframe_t*)top)[1].upper.arguments;
 	top -= 1;
 	while (true) {
-		//printf("%03X\t%03d\n",pc-vm_progmem,top-bottom);
+		//printf("%03X\t%03d\n", pc - vm_progmem, top - bottom);
 		vm_opcode_t opcode = pc[0];
 		pc += 1;
 		switch (opcode.o16.op) {
@@ -401,27 +400,45 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 						ERROR(VM_INTERNAL_E);
 					}
 				} else if (VM_ISTYPE(top->type, VM_FUNCTION_T)) {
+					if ((top + 1) >= end) {
+						GROW_THREAD(1);
+					}
 					vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
-					((vm_stackframe_t*)top)[0] = CURRENT_STACKFRAME();
+					vm_thread_stackframe_pack(
+						(vm_stackframe_t*)top,
+						pc - vm_progmem,
+						base - bottom,
+						arguments
+					);
 					arguments = args;
 					pc = vm_progmem + func->code.address;
 					base = top;
+					top += 1;
 				} else {
 					vm_exception_type(top->type, VM_CALLABLE_T);
 					ERROR(VM_TYPE_E);
 				}
 				break;
 			} case VM_OP_CALL_UNSAFE: {
+				if ((top + 1) >= end) {
+					GROW_THREAD(1);
+				}
 				vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
-				((vm_stackframe_t*)top)[0] = CURRENT_STACKFRAME();
+				vm_thread_stackframe_pack(
+					(vm_stackframe_t*)top,
+					pc - vm_progmem,
+					base - bottom,
+					arguments
+				);
 				arguments = opcode.o24.value;
 				pc = vm_progmem + func->code.address;
 				base = top;
+				top += 1;
 				break;
 			} case VM_OP_CALL_ASYNC: {
 				SOFT_ASSERT_TYPE(top, VM_FUNCTION_T);
 				vm_hashmap_t* func = MMID_TO_PTR(top[0].data.m, vm_hashmap_t*);
-				vm_mmid_t child_id = vm_thread_create(opcode.o24.value + 2);
+				vm_mmid_t child_id = vm_thread_create(opcode.o24.value + 4);
 				vm_thread_t* tmp = MMID_TO_PTR(thread_id, vm_thread_t*);
 				if (tmp != thread) {
 					RELOAD_THREAD(tmp);
@@ -431,13 +448,19 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				for (uint32_t i = 0; i < (uint32_t)opcode.o24.value; i++) {
 					child->stack[i].variable = top[i];
 				}
-				child->stack[opcode.o24.value + 0].frame = VM_PACK_STACKFRAME(pc - vm_progmem, 0, 0);
-				child->stack[opcode.o24.value + 1].frame = VM_PACK_STACKFRAME(
+				vm_thread_stackframe_pack(
+					&child->stack[opcode.o24.value + 0].frame,
+					pc - vm_progmem,
+					0xFFFFFFFF,
+					0
+				);
+				vm_thread_stackframe_pack(
+					&child->stack[opcode.o24.value + 2].frame,
 					func->code.address,
 					opcode.o24.value,
 					opcode.o24.value
 				);
-				child->top = opcode.o24.value + 1;
+				child->top = opcode.o24.value + 2;
 				vm_thread_push(child);
 				top[0] = VM_VARIABLE_MMID(VM_THREAD_T, child_id);
 				break;
@@ -455,7 +478,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				}
 				break;
 			} case VM_OP_RET: {
-				for (vm_variable_t* ptr = top - 1; ptr > base; ptr--) {
+				for (vm_variable_t* ptr = top - 1; ptr > (base + 1); ptr--) {
 					vm_variable_dereference(ptr[0]);
 				}
 				for (vm_variable_t* ptr = base - arguments; ptr < base; ptr++) {
@@ -471,9 +494,9 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				vm_stackframe_t* frame = (vm_stackframe_t*)base;
 				vm_variable_t ret = top[0];
 				top = base - arguments;
-				base = bottom + frame->base;
-				pc = vm_progmem + frame->link;
-				arguments = frame->arguments_low | (frame->arguments_high << 8);
+				base = bottom + frame[0].lower.base;
+				pc = vm_progmem + frame[0].lower.link;
+				arguments = frame[1].upper.arguments;
 				top[0] = ret;
 				break;
 			}
@@ -521,11 +544,11 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					if ((top + diff) >= end) {
 						GROW_THREAD(diff - (end - top));
 					}
-					for (uint32_t i = 0; i < (arguments + 1); i++) {
+					for (uint32_t i = 0; i < (arguments + 2); i++) {
 						top[diff - i] = top[-i];
 					}
 					for (uint32_t i = 0; i < diff; i++) {
-						top[-arguments - i] = VM_VARIABLE(VM_UNDEFINED_T);
+						top[-arguments - i - 1] = VM_VARIABLE(VM_UNDEFINED_T);
 					}
 					top += diff;
 					base += diff;
