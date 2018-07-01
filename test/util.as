@@ -30,6 +30,9 @@ function __mod_throws_immutable func:function
 function __mod_throws_internal func:function
 	set func.throws = "INTERNAL"
 
+function __mod_throws_div0 func:function
+	set func.throws = "DIV0"
+
 function __mod_private func:function
 	set func.private
 
@@ -37,7 +40,7 @@ function assert a
 	if !a throw "Assertion failed"
 
 function assertEqual a b
-	if a != b throw "Expected value '${string.from a }', got '${string.from b}'"
+	if a !== b throw "Expected value '${string.from a }', got '${string.from b}'"
 
 function assertType a b:string
 	if {typeof a} != b throw "Expected type '${typeof a}', got '$b'"
