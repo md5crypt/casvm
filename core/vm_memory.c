@@ -38,9 +38,6 @@ static void memmap_free(vm_mmid_t id) {
 }
 
 static void grow(vm_memory_t* mem, uint32_t newsize) {
-	if (newsize == 0) {
-		newsize = mem->size;
-	}
 	uint8_t* bottom = malloc(newsize);
 	uint8_t* top = bottom;
 	vm_memblock_t* block = (vm_memblock_t*)mem->bottom;

@@ -46,18 +46,46 @@
 	ERROR(VM_TYPE_E); \
 }
 
-#define INT_OP(op) \
+#define INT_OP(op, cast, z_check) \
 	do{ \
-		ASSERT_TYPE(top - 1, VM_INTEGER_T); \
-		ASSERT_TYPE(top - 0, VM_INTEGER_T); \
-		top[-1].data.i = top[-1].data.i op top[0].data.i; \
-		top -= 1; \
+		if (top[0].type == VM_INTEGER_T) { \
+			if (z_check && (top[0].data.i == 0)) { \
+				ERROR(VM_DIV0_E); \
+			} \
+			if (top[-1].type == VM_INTEGER_T) { \
+				top[-1].data.i = (cast)top[-1].data.i op (cast)top[0].data.i; \
+			} else if (top[-1].type == VM_FLOAT_T) { \
+				top[-1].data.i = (cast)top[-1].data.f op (cast)top[0].data.i; \
+			} else { \
+				vm_exception_type(top[-1].type, VM_NUMERIC_T); \
+				ERROR(VM_TYPE_E); \
+			} \
+		} else if (top[0].type == VM_FLOAT_T) { \
+			if (z_check && ((cast)top[0].data.f == 0)) { \
+				ERROR(VM_DIV0_E); \
+			} \
+			if (top[-1].type == VM_INTEGER_T) { \
+				top[-1].data.i = (cast)top[-1].data.i op (cast)top[0].data.f; \
+			} else if (top[-1].type == VM_FLOAT_T) { \
+				top[-1].data.i = (cast)top[-1].data.f op (cast)top[0].data.f; \
+			} else { \
+				vm_exception_type(top[-1].type, VM_NUMERIC_T); \
+				ERROR(VM_TYPE_E); \
+			} \
+		} else { \
+			vm_exception_type(top[0].type, VM_NUMERIC_T); \
+			ERROR(VM_TYPE_E); \
+		} \
+		(--top)->type = VM_INTEGER_T; \
 	}while (0)
 
-#define FLOAT_OP(op) \
+#define FLOAT_OP(op, z_check) \
 	do{ \
 		if (top[0].type == VM_INTEGER_T) { \
 			if (top[-1].type == VM_INTEGER_T) { \
+				if (z_check && (top[0].data.i == 0)) { \
+					ERROR(VM_DIV0_E); \
+				} \
 				top[-1].data.i = top[-1].data.i op top[0].data.i; \
 				(--top)->type = VM_INTEGER_T; \
 			} else if (top[-1].type == VM_FLOAT_T) { \
@@ -531,13 +559,13 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				}
 				break;
 			case VM_OP_BOR:
-				INT_OP(|);
+				INT_OP(|, int32_t, false);
 				break;
 			case VM_OP_BXOR:
-				INT_OP(^);
+				INT_OP(^, int32_t, false);
 				break;
 			case VM_OP_BAND:
-				INT_OP(&);
+				INT_OP(&, int32_t, false);
 				break;
 			case VM_OP_EQ:
 				top -= 1;
@@ -568,10 +596,13 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				LOGIC_OP(<=);
 				break;
 			case VM_OP_SHR:
-				INT_OP(>>);
+				INT_OP(>>, int32_t, false);
+				break;
+			case VM_OP_LSR:
+				INT_OP(>>, uint32_t, false);
 				break;
 			case VM_OP_SHL:
-				INT_OP(<<);
+				INT_OP(<<, int32_t, false);
 				break;
 			case VM_OP_ADD:
 				if (top->type == VM_STRING_T) {
@@ -584,36 +615,37 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					vm_variable_dereference(top[0]);
 					(--top)->data.m = s;
 				} else {
-					FLOAT_OP(+);
+					FLOAT_OP(+, false);
 				}
 				break;
 			case VM_OP_SUB:
-				FLOAT_OP(-);
+				FLOAT_OP(-, false);
 				break;
 			case VM_OP_MUL:
-				FLOAT_OP(*);
+				FLOAT_OP(*, false);
 				break;
 			case VM_OP_DIV:
-				if ((top[0].data.i == 0) && (top[0].type == VM_INTEGER_T) && (top[-1].type == VM_INTEGER_T)) {
-					ERROR(VM_DIV0_E);
-				}
-				FLOAT_OP(/);
+				FLOAT_OP(/, true);
 				break;
 			case VM_OP_MOD:
-				INT_OP(%);
-				break;
-			case VM_OP_TEST:
-				top->data.i = test(top);
-				top->type = VM_BOOLEAN_T;
+				INT_OP(%, int32_t, true);
 				break;
 			case VM_OP_NOT:
 				top->data.i = !test(top);
 				top->type = VM_BOOLEAN_T;
 				break;
 			case VM_OP_BNOT:
-				ASSERT_TYPE(top, VM_INTEGER_T);
-				top->data.i = ~top->data.i;
-				break;
+				if (top->type == VM_INTEGER_T) {
+					top->data.i = ~top->data.i;
+					break;
+				} else if (top->type == VM_FLOAT_T) {
+					top->data.i = ~((int32_t)top->data.f);
+					top->type = VM_INTEGER_T;
+					break;
+				} else {
+					vm_exception_type(top->type, VM_NUMERIC_T);
+					ERROR(VM_TYPE_E);
+				}
 			case VM_OP_NEG:
 				if (top->type == VM_INTEGER_T) {
 					top->data.i = -top->data.i;
