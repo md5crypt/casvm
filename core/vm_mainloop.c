@@ -26,9 +26,6 @@
 
 #define ERROR(e) \
 	do{ \
-		if ((top + 2) >= end) { \
-			GROW_THREAD(2); \
-		} \
 		vm_thread_stackframe_pack( \
 			(vm_stackframe_t*)(top + 1), \
 			pc - vm_progmem, \
@@ -59,8 +56,8 @@
 
 #define FLOAT_OP(op) \
 	do{ \
-		if ((top[0].type == VM_BOOLEAN_T) || (top[0].type == VM_INTEGER_T)) { \
-			if ((top[-1].type == VM_BOOLEAN_T) || (top[-1].type == VM_INTEGER_T)) { \
+		if (top[0].type == VM_INTEGER_T) { \
+			if (top[-1].type == VM_INTEGER_T) { \
 				top[-1].data.i = top[-1].data.i op top[0].data.i; \
 				(--top)->type = VM_INTEGER_T; \
 			} else if (top[-1].type == VM_FLOAT_T) { \
@@ -71,7 +68,7 @@
 				ERROR(VM_TYPE_E); \
 			} \
 		} else if (top[0].type == VM_FLOAT_T) { \
-			if ((top[-1].type == VM_BOOLEAN_T) || (top[-1].type == VM_INTEGER_T)) { \
+			if (top[-1].type == VM_INTEGER_T) { \
 				top[-1].data.f = top[-1].data.i op top[0].data.f; \
 				(--top)->type = VM_FLOAT_T; \
 			} else if (top[-1].type == VM_FLOAT_T) { \
@@ -87,10 +84,10 @@
 		} \
 	}while (0)
 
-#define BOOL_OP(op) \
+#define LOGIC_OP(op) \
 	do{ \
-		if ((top[0].type == VM_BOOLEAN_T) || (top[0].type == VM_INTEGER_T)) { \
-			if ((top[-1].type == VM_BOOLEAN_T) || (top[-1].type == VM_INTEGER_T)) { \
+		if (top[0].type == VM_INTEGER_T) { \
+			if (top[-1].type == VM_INTEGER_T) { \
 				top[-1].data.i = top[-1].data.i op top[0].data.i; \
 			} else if (top[-1].type == VM_FLOAT_T) { \
 				top[-1].data.i = top[-1].data.f op top[0].data.i; \
@@ -99,7 +96,7 @@
 				ERROR(VM_TYPE_E); \
 			} \
 		} else if (top[0].type == VM_FLOAT_T) { \
-			if ((top[-1].type == VM_BOOLEAN_T) || (top[-1].type == VM_INTEGER_T)) { \
+			if (top[-1].type == VM_INTEGER_T) { \
 				top[-1].data.i = top[-1].data.i op top[0].data.f; \
 			} else if (top[-1].type == VM_FLOAT_T) { \
 				top[-1].data.i = top[-1].data.f op top[0].data.f; \
@@ -133,12 +130,8 @@ inline static bool test(vm_variable_t* top) {
 			vm_dereference_m(top->data.m, VM_STRING_T);
 			break;
 		default:
-			if (top->data.m != MMID_NULL) {
-				vm_variable_dereference(top[0]);
-				result = true;
-			} else {
-				result = false;
-			}
+			vm_variable_dereference(top[0]);
+			result = true;
 			break;
 	}
 	return result;
@@ -179,30 +172,24 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 	uint32_t arguments = ((vm_stackframe_t*)top)[1].upper.arguments;
 	top -= 1;
 	while (true) {
+		if ((top + 4) >= end) {
+			GROW_THREAD(4);
+		}
 		//printf("%03X\t%03d\n", pc - vm_progmem, top - bottom);
 		vm_opcode_t opcode = pc[0];
 		pc += 1;
 		switch (opcode.o16.op) {
 			case VM_OP_PUSH_VALUE:
 				top += 1;
-				if (top >= end) {
-					GROW_THREAD(1);
-				}
 				top[0] = VM_VARIABLE_MMID(opcode.o16.type, pc->o32);
 				pc += 1;
 				break;
 			case VM_OP_PUSH_CONST:
 				top += 1;
-				if (top >= end) {
-					GROW_THREAD(1);
-				}
 				top[0] = VM_VARIABLE_MMID(opcode.o16.type, opcode.o16.value);
 				break;
 			case VM_OP_PUSH_LOCAL:
 				top +=1;
-				if (top >= end) {
-					GROW_THREAD(1);
-				}
 				top[0] = base[opcode.o24.value];
 				vm_variable_reference(top[0]);
 				break;
@@ -271,16 +258,10 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					array->data[i] = arg[0];
 				}
 				top += 1;
-				if (top >= end) {
-					GROW_THREAD(1);
-				}
 				top[0] = VM_VARIABLE_MMID(VM_ARRAY_T, id);
 				break;
 			} case VM_OP_PUSH_ARGUMENT_COUNT:
 				top += 1;
-				if (top >= end) {
-					GROW_THREAD(1);
-				}
 				top[0] = VM_VARIABLE_INTEGER(arguments);
 				break;
 			case VM_OP_DEALLOC:
@@ -366,7 +347,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 			case VM_OP_APPLY:
 			case VM_OP_CALL: {
 				uint32_t args = opcode.o24.value;
-				if (opcode.o16.op == VM_OP_APPLY) {
+				if (opcode.o24.op == VM_OP_APPLY) {
 					ASSERT_TYPE(top - 1, VM_ARRAY_T);
 					vm_array_t* array = VM_CAST_ARRAY(top - 1);
 					args = array->used;
@@ -382,9 +363,6 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				if (top->type == VM_EXTERN_T) {
 					vm_hashmap_t* hashmap = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 					if (hashmap->type == VM_NATIVE_T) {
-						if ((top + 1) >= end) {
-							GROW_THREAD(1);
-						}
 						top[1] = VM_VARIABLE(VM_UNDEFINED_T);
 						vm_exception_t e = hashmap->code.native(top, args);
 						if (e != VM_NONE_E) {
@@ -400,9 +378,6 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 						ERROR(VM_INTERNAL_E);
 					}
 				} else if (VM_ISTYPE(top->type, VM_FUNCTION_T)) {
-					if ((top + 1) >= end) {
-						GROW_THREAD(1);
-					}
 					vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 					vm_thread_stackframe_pack(
 						(vm_stackframe_t*)top,
@@ -420,9 +395,6 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				}
 				break;
 			} case VM_OP_CALL_UNSAFE: {
-				if ((top + 1) >= end) {
-					GROW_THREAD(1);
-				}
 				vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 				vm_thread_stackframe_pack(
 					(vm_stackframe_t*)top,
@@ -584,16 +556,16 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				top[0] = VM_VARIABLE_BOOL(!eq(top + 1, true));
 				break;
 			case VM_OP_GT:
-				BOOL_OP(>);
+				LOGIC_OP(>);
 				break;
 			case VM_OP_GE:
-				BOOL_OP(>=);
+				LOGIC_OP(>=);
 				break;
 			case VM_OP_LT:
-				BOOL_OP(<);
+				LOGIC_OP(<);
 				break;
 			case VM_OP_LE:
-				BOOL_OP(<=);
+				LOGIC_OP(<=);
 				break;
 			case VM_OP_SHR:
 				INT_OP(>>);
@@ -622,6 +594,9 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				FLOAT_OP(*);
 				break;
 			case VM_OP_DIV:
+				if ((top[0].data.i == 0) && (top[0].type == VM_INTEGER_T) && (top[-1].type == VM_INTEGER_T)) {
+					ERROR(VM_DIV0_E);
+				}
 				FLOAT_OP(/);
 				break;
 			case VM_OP_MOD:
@@ -644,8 +619,6 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					top->data.i = -top->data.i;
 				} else if (top->type == VM_FLOAT_T) {
 					top->data.f = -top->data.f;
-				} else if (top->type == VM_BOOLEAN_T) {
-					top->data.i = !top->data.i;
 				} else {
 					vm_exception_type(top->type, VM_NUMERIC_T);
 					ERROR(VM_TYPE_E);

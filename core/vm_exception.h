@@ -12,6 +12,7 @@ typedef enum {
 	VM_TYPE_E,
 	VM_ARITY_E,
 	VM_IMMUTABLE_E,
+	VM_DIV0_E,
 	VM_INTERNAL_E
 } vm_exception_t;
 

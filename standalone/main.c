@@ -13,7 +13,7 @@ typedef struct {
 } filedata_t;
 
 static const char* exception_names[] = {
-	"NONE", "YIELD", "USER", "OUT-OF-BOUNDS", "TYPE", "ARITY", "IMMUTABLE", "INTERNAL"
+	"NONE", "YIELD", "USER", "OUT-OF-BOUNDS", "TYPE", "ARITY", "IMMUTABLE", "DIV0", "INTERNAL"
 };
 
 extern uint32_t test_lib_try;
@@ -63,6 +63,7 @@ static void print_exception(vm_exception_t e) {
 		case VM_YIELD_E:
 		case VM_IMMUTABLE_E:
 		case VM_INTERNAL_E:
+		case VM_DIV0_E:
 			break;
 		case VM_USER_E:
 			if (data->f1) {
