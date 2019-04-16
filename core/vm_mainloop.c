@@ -269,7 +269,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				break;
 			case VM_OP_PUSH_ARGUMENT:
 				ASSERT_TYPE(top, VM_INTEGER_T);
-				if ((uint32_t)top->data.i > arguments) {
+				if ((uint32_t)top->data.i >= arguments) {
 					vm_exception_oob(top[0].data.i, arguments);
 					ERROR(VM_OOB_E);
 				}
@@ -422,19 +422,6 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					ERROR(VM_TYPE_E);
 				}
 				break;
-			} case VM_OP_CALL_UNSAFE: {
-				vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
-				vm_thread_stackframe_pack(
-					(vm_stackframe_t*)top,
-					pc - vm_progmem,
-					base - bottom,
-					arguments
-				);
-				arguments = opcode.o24.value;
-				pc = vm_progmem + func->code.address;
-				base = top;
-				top += 1;
-				break;
 			} case VM_OP_CALL_ASYNC: {
 				SOFT_ASSERT_TYPE(top, VM_FUNCTION_T);
 				vm_hashmap_t* func = MMID_TO_PTR(top[0].data.m, vm_hashmap_t*);
@@ -547,11 +534,11 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					for (uint32_t i = 0; i < (arguments + 2); i++) {
 						top[diff - i] = top[-i];
 					}
-					for (uint32_t i = 0; i < diff; i++) {
-						top[-arguments - i - 1] = VM_VARIABLE(VM_UNDEFINED_T);
-					}
 					top += diff;
 					base += diff;
+					for (uint32_t i = 0; i < diff; i++) {
+						base[-arguments - i - 1] = VM_VARIABLE(VM_UNDEFINED_T);
+					}
 					arguments = opcode.o24.value;
 				} else if (arguments != (uint32_t)opcode.o24.value) {
 					vm_exception_arity(opcode.o24.value, arguments);

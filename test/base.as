@@ -25,7 +25,7 @@ namespace array
 		local n = {length A}
 		if n == 0
 			return ''
-		set glue = glue || ' '
+		set glue = {istype glue "string"} ? glue : ' '
 		local e = (A 0)
 		local str = {istype e "array"} ? '<:array>' : {string.from e}
 		for i in 1:n
