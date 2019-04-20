@@ -8,11 +8,14 @@
 
 #define VM_ISTYPE(who, what)            (vm_type_matrix[(VM_TYPE_COUNT * who) + what])
 #define VM_CONSTANT                     0xFFFFFFFF
-#define VM_VARIABLE(_type)              ((vm_variable_t) {.type = (_type), .data.i = 0})
+#define VM_VARIABLE(_type, _data)       ((vm_variable_t) {.type = (_type), .data.i = (_data)})
+#define VM_VARIABLE_OFTYPE(_type)       ((vm_variable_t) {.type = (_type), .data.i = 0})
 #define VM_VARIABLE_INTEGER(value)      ((vm_variable_t) {.type = VM_INTEGER_T, .data.i = (value)})
 #define VM_VARIABLE_BOOL(value)         ((vm_variable_t) {.type = VM_BOOLEAN_T, .data.i = (value)})
 #define VM_VARIABLE_FLOAT(value)        ((vm_variable_t) {.type = VM_FLOAT_T, .data.f = (value)})
 #define VM_VARIABLE_MMID(_type, value)  ((vm_variable_t) {.type = (_type), .data.m = (value)})
+
+typedef uint32_t vm_variable_data_t;
 
 typedef struct {
 	vm_type_t type;
@@ -49,19 +52,24 @@ extern vm_memory_t vm_mem_thread;
 extern vm_mmid_t vm_root;
 extern const vm_opcode_t* vm_progmem;
 
-void vm_init();
+void vm_init(void);
 
-uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b);
 void vm_call(uint32_t address);
 vm_exception_t vm_run(void);
 
 extern const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT];
 
+void vm_dereference(void* ptr, vm_type_t type);
+
+void vm_dereference_m(vm_mmid_t id, vm_type_t type);
+
+void vm_reference_type_ns(vm_variable_data_t data, vm_type_t type);
+
 inline static void vm_make_const(vm_mmid_t id) {
 	MMID_TO_PTR(id, uint32_t*)[0] = VM_CONSTANT;
 }
 
-inline static void vm_reference(void* ptr) {
+inline static void vm_reference_unsafe(void* ptr) {
 	if (((uint32_t*)ptr)[0] != VM_CONSTANT) {
 		((uint32_t*)ptr)[0] += 1;
 	}
@@ -74,28 +82,9 @@ inline static void vm_reference_m(vm_mmid_t id) {
 	}
 }
 
-inline static void vm_dereference(void* ptr, vm_type_t type) {
-	vm_destructor_t destructor = vm_destructor_lut[type];
-	if (destructor) {
-		uint32_t cnt = ((uint32_t*)ptr)[0];
-		if (cnt <= 1) {
-			destructor(ptr);
-		} else if (cnt != VM_CONSTANT) {
-			((uint32_t*)ptr)[0] = cnt - 1;
-		}
-	}
-}
-
-inline static void vm_dereference_m(vm_mmid_t id, vm_type_t type) {
-	vm_destructor_t destructor = vm_destructor_lut[type];
-	if (destructor) {
-		void* ptr = MMID_TO_PTR(id, void*);
-		uint32_t cnt = ((uint32_t*)ptr)[0];
-		if (cnt <= 1) {
-			destructor(ptr);
-		} else if (cnt != VM_CONSTANT) {
-			((uint32_t*)ptr)[0] = cnt - 1;
-		}
+inline static void vm_reference_inline(vm_variable_data_t data, vm_type_t type) {
+	if (vm_destructor_lut[type]) {
+		vm_reference_m(data);
 	}
 }
 
@@ -111,6 +100,6 @@ inline static void vm_variable_dereference(vm_variable_t v) {
 
 bool vm_fault_trace(vm_symbols_location_t* loc);
 
-vm_mmid_t vm_fault_get_thread();
+vm_mmid_t vm_fault_get_thread(void);
 
-void vm_fault_recover();
+void vm_fault_recover(void);

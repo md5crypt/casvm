@@ -59,17 +59,17 @@ vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mm
 	return id;
 }
 
-void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value) {
+void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_data_t value, vm_type_t type) {
 	vm_hashmap_pair_t* pair = get(map, key);
 	vm_mmid_t id = pair->key;
 	if ((id != MMID_NULL) && (id != TOMBSTONE)) {
 		vm_variable_dereference(pair->data);
 	}
-	if (value.type == VM_UNDEFINED_T) {
+	if (type == VM_UNDEFINED_T) {
 		pair->key = TOMBSTONE;
 		map->deleted++;
 	} else {
-		pair->data = value;
+		pair->data = VM_VARIABLE(type, value);
 		pair->key = key;
 	}
 	if (id == MMID_NULL) {
@@ -83,7 +83,7 @@ void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value) {
 void vm_hashmap_get(const vm_hashmap_t* map, vm_mmid_t key, vm_variable_t* value) {
 	const vm_hashmap_pair_t* pair = get_const(map, key);
 	if ((pair->key == MMID_NULL) || (pair->key == TOMBSTONE)) {
-		value[0] = VM_VARIABLE(VM_UNDEFINED_T);
+		value[0] = VM_VARIABLE_OFTYPE(VM_UNDEFINED_T);
 	} else {
 		vm_variable_reference(pair->data);
 		value[0] = pair->data;

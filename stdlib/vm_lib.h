@@ -49,6 +49,7 @@ do{ \
 	return VM_USER_E; \
 } while (0)
 
-vm_mmid_t lib_int2str(int32_t value);
-vm_mmid_t lib_float2str(float value);
+extern vm_mmid_t lib_int2str(int32_t value);
+extern vm_mmid_t lib_float2str(float value);
+
 vm_mmid_t lib_type2str(vm_type_t value);

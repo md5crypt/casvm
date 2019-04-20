@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <string.h>
 
 #include "vm.h"
@@ -58,19 +57,6 @@ void vm_call(uint32_t address) {
 	vm_thread_push(thread);
 }
 
-uint32_t vm_variable_compare(vm_variable_t a, vm_variable_t b) {
-	if (a.type != b.type) {
-		return 0;
-	}
-	if (a.data.i == b.data.i) {
-		return 1;
-	}
-	if (a.type == VM_STRING_T) {
-		return vm_string_cmp(VM_CAST_STRING(&a), VM_CAST_STRING(&b));
-	}
-	return 0;
-}
-
 vm_exception_t vm_run() {
 	if (last_fault.exception != VM_NONE_E) {
 		return last_fault.exception;
@@ -103,4 +89,33 @@ bool vm_fault_trace(vm_symbols_location_t* loc) {
 	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
 	vm_symbols_get_location(thread->stack[thread->top].frame.lower.link, loc);
 	return vm_thread_unwind(thread);
+}
+
+void vm_dereference(void* ptr, vm_type_t type) {
+	vm_destructor_t destructor = vm_destructor_lut[type];
+	if (destructor) {
+		uint32_t cnt = ((uint32_t*)ptr)[0];
+		if (cnt <= 1) {
+			destructor(ptr);
+		} else if (cnt != VM_CONSTANT) {
+			((uint32_t*)ptr)[0] = cnt - 1;
+		}
+	}
+}
+
+void vm_dereference_m(vm_mmid_t id, vm_type_t type) {
+	vm_destructor_t destructor = vm_destructor_lut[type];
+	if (destructor) {
+		void* ptr = MMID_TO_PTR(id, void*);
+		uint32_t cnt = ((uint32_t*)ptr)[0];
+		if (cnt <= 1) {
+			destructor(ptr);
+		} else if (cnt != VM_CONSTANT) {
+			((uint32_t*)ptr)[0] = cnt - 1;
+		}
+	}
+}
+
+void vm_reference(vm_variable_data_t data, vm_type_t type) {
+	vm_reference_inline(data, type);
 }

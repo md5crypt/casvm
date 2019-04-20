@@ -70,3 +70,7 @@ void vm_memory_replace(vm_memory_t* mem, vm_mmid_t dst, vm_mmid_t src);
  * memory space
  */
 void vm_memory_free(vm_memory_t* mem, vm_mmid_t id);
+
+// non-inline versions of MMID_TO_PTR / PTR_TO_MMID
+vm_mmid_t vm_memory_get_mmid(void* ptr);
+void* vm_memory_get_ptr(vm_mmid_t mmid);

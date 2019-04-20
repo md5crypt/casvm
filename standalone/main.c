@@ -6,6 +6,7 @@
 #include "vm_util.h"
 #include "vm_thread.h"
 #include "vm_string.h"
+#include "vm_extern.h"
 
 typedef struct {
 	uint8_t* data;
@@ -99,7 +100,7 @@ bool run() {
 				return false;
 			}
 			vm_thread_t* thread = MMID_TO_PTR(vm_fault_get_thread(), vm_thread_t*);
-			vm_thread_kill(thread, VM_VARIABLE_MMID(VM_STRING_T, vm_string_cstr(exception_names[e], 0)));
+			vm_thread_kill(thread, vm_string_cstr(exception_names[e], 0), VM_STRING_T);
 			vm_fault_recover();
 		} else {
 			return true;
@@ -124,11 +125,11 @@ int main(int argc, char *argv[]) {
 			puts("invalid magic number");
 			exit(1);
 		case VM_LOADER_ERROR_SECTION:
-			printf("unknown section: '%s'\n", (char*)vm_loader_error_data);
+			printf("unknown section: '%s'\n", (char*)vm_loader_get_error_data());
 			exit(1);
 		case VM_LOADER_ERROR_EXTERN:
 			printf("unresolved extern: '");
-			wstring_print((wstring_t*)vm_loader_error_data);
+			wstring_print((wstring_t*)vm_loader_get_error_data());
 			puts("'");
 			exit(1);
 		default:
@@ -136,4 +137,27 @@ int main(int argc, char *argv[]) {
 	}
 	vm_call(0);
 	return !run();
+}
+
+vm_exception_t vm_extern_call(uint32_t id, vm_variable_t* top, uint32_t arguments) {
+	(void) id;
+	(void) top;
+	(void) arguments;
+	puts("vm_extern_call not implemented");
+	exit(1);
+}
+
+uint32_t vm_extern_resolve(const wstring_t* str) {
+	(void) str;
+	return 0xFFFFFFFF;
+}
+
+vm_mmid_t lib_int2str(int32_t value) {
+	char buffer[64];
+	return vm_string_cstr(buffer, sprintf(buffer, "%d", value));
+}
+
+vm_mmid_t lib_float2str(float value) {
+	char buffer[64];
+	return vm_string_cstr(buffer, sprintf(buffer, "%g", value));
 }

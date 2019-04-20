@@ -1,0 +1,6 @@
+.out
+vm_extern_native.c
+emsdk
+build
+node_modules
+package-lock.json

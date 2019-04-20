@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <string.h>
 
 #include "vm_mainloop.h"
@@ -7,6 +6,7 @@
 #include "vm_string.h"
 #include "vm_hashmap.h"
 #include "vm_array.h"
+#include "vm_extern.h"
 #include "vm_op.h"
 
 #define RELOAD_THREAD(newthread) \
@@ -225,7 +225,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				SOFT_ASSERT_TYPE(top, VM_HASHMAP_T);
 				vm_mmid_t mmid = MMID_TO_PTR(top->data.m, vm_hashmap_t*)->parent;
 				top[0] = (mmid == MMID_NULL) ?
-					VM_VARIABLE(VM_UNDEFINED_T) :
+					VM_VARIABLE_OFTYPE(VM_UNDEFINED_T) :
 					VM_VARIABLE_MMID(MMID_TO_PTR(mmid, vm_hashmap_t*)->type, mmid);
 				break;
 			}
@@ -304,7 +304,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				}
 				for (int32_t i = 0; i < opcode.o24.value; i++) {
 					top += 1;
-					top[0] = VM_VARIABLE(VM_UNDEFINED_T);
+					top[0] = VM_VARIABLE_OFTYPE(VM_UNDEFINED_T);
 				}
 				break;
 			case VM_OP_DUP: {
@@ -326,7 +326,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 			case VM_OP_SET_MEMBER:
 				if (top[-1].type == VM_ARRAY_T) {
 					ASSERT_TYPE(top - 0, VM_INTEGER_T);
-					vm_exception_t e = vm_array_set(VM_CAST_ARRAY(top - 1), top[0].data.i, top[-2]);
+					vm_exception_t e = vm_array_set(VM_CAST_ARRAY(top - 1), top[0].data.i, top[-2].data.i, top[-2].type);
 					vm_variable_dereference(top[-1]);
 					top -= 3;
 					if (e != VM_NONE_E) {
@@ -337,7 +337,8 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					vm_hashmap_set(
 						VM_CAST_HASHMAP(top - 1),
 						vm_string_intern(VM_CAST_STRING(top - 0)),
-						top[-2]
+						top[-2].data.i,
+						top[-2].type
 					);
 					top -= 3;
 					break;
@@ -350,11 +351,11 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				break;
 			case VM_OP_SET_MEMBER_UNSAFE:
 				SOFT_ASSERT_TYPE(top - 1, VM_HASHMAP_T);
-				vm_hashmap_set(VM_CAST_HASHMAP(top - 1), top[0].data.i, top[-2]);
+				vm_hashmap_set(VM_CAST_HASHMAP(top - 1), top[0].data.i, top[-2].data.i, top[-2].type);
 				top -= 3;
 				break;
 			case VM_OP_SET_MEMBER_CONST:
-				vm_hashmap_set(VM_CAST_HASHMAP(top - 0), opcode.o24.value, top[-1]);
+				vm_hashmap_set(VM_CAST_HASHMAP(top - 0), opcode.o24.value, top[-1].data.i, top[-1].type);
 				top -= 2;
 				break;
 			case VM_OP_JMP:
@@ -390,21 +391,21 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				}
 				if (top->type == VM_EXTERN_T) {
 					vm_hashmap_t* hashmap = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
-					if (hashmap->type == VM_NATIVE_T) {
-						top[1] = VM_VARIABLE(VM_UNDEFINED_T);
-						vm_exception_t e = hashmap->code.native(top, args);
-						if (e != VM_NONE_E) {
-							top += 1;
-							ERROR(e);
-						}
-						for (uint32_t i = 0; i < args; i++) {
-							vm_variable_dereference(top[-i - 1]);
-						}
-						top[-args] = top[1];
-						top -= args;
-					} else {
-						ERROR(VM_INTERNAL_E);
+					top[1] = VM_VARIABLE_OFTYPE(VM_UNDEFINED_T);
+					vm_exception_t e = (
+						(hashmap->type == VM_NATIVE_T) ?
+						hashmap->code.native(top, args) :
+						vm_extern_call(hashmap->code.address, top, args)
+					);
+					if (e != VM_NONE_E) {
+						top += 1;
+						ERROR(e);
 					}
+					for (uint32_t i = 0; i < args; i++) {
+						vm_variable_dereference(top[-i - 1]);
+					}
+					top[-args] = top[1];
+					top -= args;
 				} else if (VM_ISTYPE(top->type, VM_FUNCTION_T)) {
 					vm_hashmap_t* func = MMID_TO_PTR(top->data.m, vm_hashmap_t*);
 					vm_thread_stackframe_pack(
@@ -537,7 +538,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					top += diff;
 					base += diff;
 					for (uint32_t i = 0; i < diff; i++) {
-						base[-arguments - i - 1] = VM_VARIABLE(VM_UNDEFINED_T);
+						base[-arguments - i - 1] = VM_VARIABLE_OFTYPE(VM_UNDEFINED_T);
 					}
 					arguments = opcode.o24.value;
 				} else if (arguments != (uint32_t)opcode.o24.value) {

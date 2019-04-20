@@ -33,6 +33,6 @@ vm_mmid_t vm_symbols_get_function(uint32_t offset);
 
 wstring_t* vm_symbols_get_file(uint32_t offset);
 
-void vm_symbols_clear();
+void vm_symbols_clear(void);
 
 void vm_symbols_get_location(uint32_t pc, vm_symbols_location_t* loc);

@@ -26,7 +26,7 @@ typedef struct {
 
 vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mmid_t parent, void* code);
 
-void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_t value);
+void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_data_t value, vm_type_t type);
 
 void vm_hashmap_get(const vm_hashmap_t* map, vm_mmid_t key, vm_variable_t* value);
 

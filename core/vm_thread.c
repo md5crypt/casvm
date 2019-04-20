@@ -74,7 +74,7 @@ bool vm_thread_unwind(vm_thread_t* thread) {
 	return true;
 }
 
-void vm_thread_kill(vm_thread_t* thread, vm_variable_t value) {
+void vm_thread_kill(vm_thread_t* thread, vm_variable_data_t value, vm_type_t type) {
 	if (thread->state == VM_THREAD_STATE_FINISHED) {
 		return;
 	}
@@ -100,12 +100,12 @@ void vm_thread_kill(vm_thread_t* thread, vm_variable_t value) {
 	thread->prev = MMID_NULL;
 	vm_thread_dequeue(thread);
 	while (vm_thread_unwind(thread));
-	thread->stack[0].variable = value;
+	thread->stack[0].variable = VM_VARIABLE(type, value);
 	thread->state = VM_THREAD_STATE_FINISHED;
 }
 
 void vm_thread_free(vm_thread_t* thread) {
-	vm_thread_kill(thread, VM_VARIABLE(VM_UNDEFINED_T));
+	vm_thread_kill(thread, 0, VM_UNDEFINED_T);
 	vm_variable_dereference(thread->stack[0].variable);
 	vm_memory_free(&vm_mem_thread, PTR_TO_MMID(thread));
 }

@@ -43,7 +43,7 @@ void vm_thread_wait(vm_thread_t* thread, vm_thread_t* queue);
 void vm_thread_dequeue(vm_thread_t* thread);
 void vm_thread_free(vm_thread_t* thread);
 void vm_thread_push(vm_thread_t* thread);
-void vm_thread_kill(vm_thread_t* thread, vm_variable_t value);
+void vm_thread_kill(vm_thread_t* thread, vm_variable_data_t value, vm_type_t type);
 bool vm_thread_unwind(vm_thread_t* thread);
 
 static inline void vm_thread_stackframe_pack(vm_stackframe_t* frame, uint32_t link, uint32_t base, uint32_t arguments) {

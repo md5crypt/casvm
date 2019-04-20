@@ -13,4 +13,4 @@
 
 #define THREAD_INITIAL_SIZE  128
 
-#define VM_ARRAY_SIZE_MIN     8
+#define VM_ARRAY_SIZE_MIN    8

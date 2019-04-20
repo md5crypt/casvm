@@ -37,10 +37,10 @@ vm_exception_t vm_lib_array_push(vm_variable_t* top, uint32_t arguments) {
 	ASSERT_TYPE(1, VM_ARRAY_T);
 	vm_array_t* array = VM_CAST_ARRAY(top - 1);
 	for (uint32_t i = 2; i <= arguments; i++) {
-		array = vm_array_push(array, top[-i]);
+		array = vm_array_push(array, top[-i].data.i, top[-i].type);
 	}
 	top[1] = top[-1];
-	vm_reference(array);
+	vm_reference_unsafe(array);
 	return VM_NONE_E;
 }
 
@@ -55,10 +55,10 @@ vm_exception_t vm_lib_array_unshift(vm_variable_t* top, uint32_t arguments) {
 	ASSERT_TYPE(1, VM_ARRAY_T);
 	vm_array_t* array = VM_CAST_ARRAY(top - 1);
 	for (uint32_t i = arguments; i >= 2; i--) {
-		array = vm_array_unshift(array, *(top - i));
+		array = vm_array_unshift(array, top[-i].data.i, top[-i].type);
 	}
 	top[1] = top[-1];
-	vm_reference(array);
+	vm_reference_unsafe(array);
 	return VM_NONE_E;
 }
 
@@ -79,9 +79,9 @@ vm_exception_t vm_lib_array_resize(vm_variable_t* top, uint32_t arguments) {
 	uint32_t oldsize = array->used;
 	array = vm_array_resize(array, (uint32_t)top[-2].data.i);
 	if (arguments == 3) {
-		vm_array_fill(array, top[-3], oldsize, array->used - oldsize);
+		vm_array_fill(array, top[-3].data.i, top[-3].type, oldsize, array->used - oldsize);
 	}
-	vm_reference(array);
+	vm_reference_unsafe(array);
 	top[1] = top[-1];
 	return VM_NONE_E;
 }
@@ -102,7 +102,7 @@ vm_exception_t vm_lib_array_slice(vm_variable_t* top, uint32_t arguments) {
 	}
 	vm_mmid_t id = vm_array_slice(array, start, stop);
 	if (id == MMID_NULL) {
-		top[1] = VM_VARIABLE(VM_INVALID_T);
+		top[1] = VM_VARIABLE_OFTYPE(VM_INVALID_T);
 		return VM_OOB_E;
 	}
 	top[1] = VM_VARIABLE_MMID(VM_ARRAY_T, id);
@@ -145,7 +145,7 @@ vm_exception_t vm_lib_array_fill(vm_variable_t* top, uint32_t arguments) {
 	} else {
 		length = offset >= 0 ? (int32_t)(array->used - offset) : -offset;
 	}
-	return vm_array_fill(array, top[-2], offset, length);
+	return vm_array_fill(array, top[-2].data.i, top[-2].type, offset, length);
 }
 
 vm_exception_t vm_lib_array_find(vm_variable_t* top, uint32_t arguments) {
@@ -157,7 +157,7 @@ vm_exception_t vm_lib_array_find(vm_variable_t* top, uint32_t arguments) {
 		ASSERT_TYPE(3, VM_INTEGER_T);
 		offset = top[-3].data.i;
 	}
-	int32_t result = vm_array_find(array, top[-2], offset);
+	int32_t result = vm_array_find(array, top[-2].data.i, top[-2].type, offset);
 	if (result == -2) {
 		return VM_OOB_E;
 	}
@@ -180,7 +180,7 @@ vm_exception_t vm_lib_array_expand(vm_variable_t* top, uint32_t arguments) {
 		vm_array_write(output, src, offset, src->used);
 		offset += src->used;
 	}
-	vm_reference(output);
+	vm_reference_unsafe(output);
 	top[1] = top[-1];
 	return VM_NONE_E;
 }
@@ -190,7 +190,7 @@ vm_exception_t vm_lib_array_reverse(vm_variable_t* top, uint32_t arguments) {
 	ASSERT_TYPE(1, VM_ARRAY_T);
 	vm_array_t* array = VM_CAST_ARRAY(top - 1);
 	vm_array_reverse(array);
-	vm_reference(array);
+	vm_reference_unsafe(array);
 	top[1] = top[-1];
 	return VM_NONE_E;
 }

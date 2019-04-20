@@ -1,16 +1,5 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include "vm_lib.h"
-
-static char sprintf_buffer[64];
-
-vm_mmid_t lib_int2str(int32_t value) {
-	return vm_string_cstr(sprintf_buffer, sprintf(sprintf_buffer, "%d", value));
-}
-
-vm_mmid_t lib_float2str(float value) {
-	return vm_string_cstr(sprintf_buffer, sprintf(sprintf_buffer, "%g", value));
-}
 
 vm_mmid_t lib_type2str(vm_type_t value) {
 	static vm_mmid_t type_strings[VM_TYPE_COUNT] = {0};
@@ -63,6 +52,31 @@ vm_exception_t vm_lib_length(vm_variable_t* top, uint32_t arguments) {
 	} else {
 		vm_exception_type(top[-1].type, VM_INDEXABLE_T);
 		return VM_TYPE_E;
+	}
+	return VM_NONE_E;
+}
+
+vm_exception_t vm_lib_mem_stat(vm_variable_t* top, uint32_t arguments) {
+	ASSERT_ARITY_LE(1);
+	uint32_t stat[] = {
+		vm_mem_const.used,
+		vm_mem_hashmap.used,
+		vm_mem_array.used,
+		vm_mem_string.used,
+		vm_mem_thread.used,
+		vm_memmap.used - vm_memmap.stack.used
+	};
+	const uint32_t size = sizeof(stat) / sizeof(stat[0]);
+	vm_mmid_t id = (arguments == 0) ? vm_array_create(size) : top[-1].data.m;
+	vm_array_t* array = MMID_TO_PTR(id, vm_array_t*);
+	if (array->used != size) {
+		THROW("invalid array size");
+	}
+	for (uint32_t i = 0; i < size; i++) {
+		vm_array_set(array, i, stat[i], VM_INTEGER_T);
+	}
+	if (arguments == 0) {
+		top[1] = VM_VARIABLE_MMID(VM_ARRAY_T, id);
 	}
 	return VM_NONE_E;
 }

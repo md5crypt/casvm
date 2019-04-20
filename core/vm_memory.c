@@ -126,3 +126,11 @@ void vm_memory_free(vm_memory_t* mem, vm_mmid_t id) {
 	mem->used -= block->size;
 	memmap_free(id);
 }
+
+vm_mmid_t vm_memory_get_mmid(void* ptr) {
+	return ((vm_memblock_t*)((uint8_t*)ptr - sizeof(vm_memblock_t)))->id;
+}
+
+void* vm_memory_get_ptr(vm_mmid_t mmid) {
+	return vm_memmap.bottom[mmid];
+}

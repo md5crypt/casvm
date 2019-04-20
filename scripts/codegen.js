@@ -90,12 +90,12 @@ function crateExternFiles(paths, outDir) {
 		.map(x => fs.readFileSync(x, 'utf8')).join('/n')
 		.match(/^vm_exception_t\s*vm_lib_[^(]+\([^{\n]+{$/gm)
 		.map(x => x.match(/vm_lib_([^(\s]+)/)[1]).sort()
-	console.log("codegen.js: creating vm_externs.c")
-	fs.writeFileSync(outDir+'vm_externs.c',
+	console.log("codegen.js: creating vm_extern_native.c")
+	fs.writeFileSync(outDir+'vm_extern_native.c',
 		'#include <stddef.h>\n\n' +
-		'#include "vm_externs.h"\n\n' +
+		'#include "vm_extern.h"\n\n' +
 		libData.map(x => `extern vm_exception_t ${'vm_lib_' + x}(vm_variable_t* top, uint32_t arguments);`).join('\n') +
-		'\n\nconst vm_extern_t vm_externs[] = {\n' +
+		'\n\nconst vm_extern_t vm_extern_native[] = {\n' +
 		libData.map(x => `\t{"__${cammel(x)}", vm_lib_${x} },`).join('\n') +
 		'\n\t{NULL, NULL}\n};\n'
 	)

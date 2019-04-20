@@ -10,7 +10,7 @@ SCRIPT := ../scripts/codegen.js
 OUTDIR := .out
 
 SOURCES := $(subst ../,,$(wildcard ../core/*.c) $(wildcard ../stdlib/*.c)) \
-	core/vm_type.c main.c vm_lib_test.c vm_externs.c
+	core/vm_type.c main.c vm_lib_test.c vm_extern_native.c
 OBJECTS := $(addprefix $(OUTDIR)/,$(patsubst %.c,%.o,$(SOURCES)))
 EXTERNS := $(wildcard ../stdlib/*.c) vm_lib_test.c
 
@@ -21,7 +21,7 @@ pre-build:
 
 main-build: vm
 
-vm_externs.c: $(SCRIPT) $(EXTERNS)
+vm_extern_native.c: $(SCRIPT) $(EXTERNS)
 	$(NODE) $(SCRIPT) $(addprefix -l ,$(EXTERNS))
 
 $(OUTDIR)/%.o: %.c
@@ -33,6 +33,6 @@ vm: $(OBJECTS)
 
 clean:
 	rm -rf $(OUTDIR)
-	rm -f vm_externs.c
+	rm -f vm_extern_native.c
 
 -include $(patsubst %.o,%.d,$(OBJECTS))

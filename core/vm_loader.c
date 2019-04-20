@@ -3,7 +3,7 @@
 #include "vm_loader.h"
 #include "vm.h"
 #include "vm_util.h"
-#include "vm_externs.h"
+#include "vm_extern.h"
 #include "vm_hashmap.h"
 #include "vm_string.h"
 #include "vm_symbols.h"
@@ -43,17 +43,6 @@ static wstring_t** section_create_stringmap(const uint8_t* data) {
 	return map;
 }
 
-static vm_native_t extern_native_resolve(const wstring_t* str) {
-	const vm_extern_t* item = vm_externs;
-	while (item->name != NULL) {
-		if (wstrcmp8(str, item->name) == 0) {
-			return item->function;
-		}
-		item += 1;
-	}
-	return NULL;
-}
-
 static vm_loader_error_t section_loader_progmem(const uint8_t* data, uint32_t size) {
 	UNUSED(size);
 	vm_progmem = (vm_opcode_t*)data;
@@ -73,12 +62,18 @@ static vm_loader_error_t section_loader_object(const uint8_t* data, uint32_t siz
 		void* address = (void*)objects->code;
 		vm_type_t type = objects->type;
 		if (objects->type == VM_EXTERN_T) {
-			address = (void*)extern_native_resolve(externs[objects->code]);
+			address = (void*)vm_extern_native_resolve(externs[objects->code]);
 			if (address == NULL) {
-				vm_loader_error_data = externs[objects->code];
-				return VM_LOADER_ERROR_EXTERN;
+				address = (void*)vm_extern_resolve(externs[objects->code]);
+				if (address == (void*)0xFFFFFFFF) {
+					vm_loader_error_data = externs[objects->code];
+					return VM_LOADER_ERROR_EXTERN;
+				} else {
+					type = VM_EXTERN_T;
+				}
+			} else {
+				type = VM_NATIVE_T;
 			}
-			type = VM_NATIVE_T;
 		}
 		uint32_t mmid = vm_hashmap_create(8, type, objects->name, objects->parent, address);
 		if (objects->parent == MMID_NULL) {
@@ -169,4 +164,8 @@ vm_loader_error_t vm_loader_load(const uint8_t* data, uint32_t size) {
 		data += section->size + sizeof(vm_loader_section_t);
 	}
 	return VM_LOADER_ERROR_NONE;
+}
+
+const void* vm_loader_get_error_data(void) {
+	return vm_loader_error_data;
 }
