@@ -17,91 +17,80 @@ type c_float = number
 type AsVmExtern = (top: c_ptr, argc: c_uint32) => AsVm.Exception
 
 interface WAsmEnvBase {
-	memory: WebAssembly.Memory,
-	table: WebAssembly.Table,
-	_sbrk: (delta: c_uint32) => c_uint32,
-	__memory_base: c_uint32,
+	memory: WebAssembly.Memory
+	table: WebAssembly.Table
+	_sbrk: (delta: c_uint32) => c_uint32
+	__memory_base: c_uint32
 	__table_base: c_uint32
 }
 
 interface AsVmEnv extends WAsmEnvBase {
-	_emscripten_memcpy_big: (dest: c_ptr, src: c_ptr, num: c_uint32) => c_ptr,
+	_emscripten_memcpy_big: (dest: c_ptr, src: c_ptr, num: c_uint32) => c_ptr
 	_lib_float2str: (value: c_float) => c_uint32
 	_lib_int2str: (value: c_int32) => c_uint32
 	_vm_extern_call: (id: c_uint32, top: c_ptr, argc: c_uint32) => AsVm.Exception
 	_vm_extern_resolve: (str: c_ptr) => c_uint32
-	// _debug_print: (value: c_uint32) => void
 	// ___assert_fail: (assertion: c_ptr, file: c_ptr, line: c_uint32, func: c_ptr) => void
 }
 
 interface EMScriptenMetadata {
-	vesrion: [number, number],
-	abiVersion: [number, number],
-	memSize: number,
+	vesrion: [number, number]
+	abiVersion: [number, number]
+	memSize: number
 	tableSize: number
 }
 
 interface AsVmExports {
-	_free: (ptr: c_ptr) => void,
-	_malloc: (size: c_uint32) => c_ptr,
-	_memcpy: (dest: c_ptr, src: c_ptr, num: c_uint32) => c_ptr,
-	_memset: (ptr: c_ptr, value: c_uint32, num: c_uint32) => c_ptr,
-	// _vm_array_apply: [Function: 73],
-	// _vm_array_create: [Function: 61],
-	// _vm_array_fill: [Function: 67],
-	// _vm_array_find: [Function: 69],
-	// _vm_array_free: [Function: 62],
-	// _vm_array_get: [Function: 60],
-	// _vm_array_pop: [Function: 70],
-	// _vm_array_push: [Function: 65],
-	// _vm_array_resize: [Function: 64],
-	// _vm_array_reverse: [Function: 68],
-	// _vm_array_set: [Function: 59],
-	// _vm_array_shift: [Function: 72],
-	// _vm_array_slice: [Function: 63],
-	// _vm_array_unshift: [Function: 71],
-	// _vm_array_write: [Function: 66],
-	_vm_call: (mmid: c_ptr) => void,
-	// _vm_dereference: [Function: 43],
-	// _vm_exception_arity: [Function: 75],
-	_vm_exception_data_get: () => c_ptr,
-	// _vm_exception_oob: [Function: 75],
-	// _vm_exception_type: [Function: 75],
-	// _vm_exception_user: [Function: 76],
-	_vm_fault_get_thread: () => c_uint32,
-	_vm_fault_recover: () => void,
+	_free: (ptr: c_ptr) => void
+	_malloc: (size: c_uint32) => c_ptr
+	_memcpy: (dest: c_ptr, src: c_ptr, num: c_uint32) => c_ptr
+	_memset: (ptr: c_ptr, value: c_uint32, num: c_uint32) => c_ptr
+	_vm_init: () => void
+	_vm_run: () => AsVm.Exception
+	_vm_call: (mmid: c_ptr) => void
+	_vm_array_create: (len: c_uint32) => c_uint32
+	_vm_array_fill: (array: c_ptr, value: c_uint32, type: AsVm.Type, offset: c_int32, len: c_int32) => AsVm.Exception
+	_vm_array_find: (array: c_ptr, value: c_uint32, type: AsVm.Type, offset: c_int32) => AsVm.Exception
+	_vm_array_get: (array: c_ptr, pos: c_int32, value: c_ptr) => AsVm.Exception
+	_vm_array_pop: (array: c_ptr, value: c_ptr) => AsVm.Exception
+	_vm_array_push: (array: c_ptr, value: c_uint32, type: AsVm.Type) => c_ptr
+	_vm_array_resize: (array: c_ptr, size: c_uint32) => c_ptr
+	_vm_array_reverse: (array: c_ptr) => void
+	_vm_array_set: (array: c_ptr, pos: c_int32, value: c_uint32, type: AsVm.Type) => AsVm.Exception
+	_vm_array_shift: (array: c_ptr, value: c_ptr) => AsVm.Exception
+	_vm_array_slice: (array: c_ptr, start: c_int32, end: c_int32) => c_uint32
+	_vm_array_unshift: (array: c_ptr, value: c_uint32, type: AsVm.Type) => c_ptr
+	_vm_array_write: (dst: c_ptr, src: c_ptr, offset: c_int32, len: c_int32) => AsVm.Exception
+	_vm_reference: (value: c_uint32, type: AsVm.Type) => void
+	_vm_dereference: (value: c_uint32, type: AsVm.Type) => void
+	_vm_exception_data_get: () => c_ptr
+	_vm_exception_arity: (actual: c_uint32, expected: c_uint32) => void
+	_vm_exception_oob: (index: c_uint32, size: c_uint32) => void
+	_vm_exception_type: (actual: AsVm.Type, expected: AsVm.Type) => void
+	_vm_exception_user: (wstring: c_ptr) => void
+	_vm_fault_get_thread: () => c_uint32
+	_vm_fault_recover: () => void
 	_vm_fault_trace: (loc: c_ptr) => boolean
-	// _vm_hashmap_create: [Function: 15],
-	// _vm_hashmap_get: [Function: 17],
-	// _vm_hashmap_has: [Function: 18],
-	// _vm_hashmap_keys: [Function: 19],
-	// _vm_hashmap_set: [Function: 16],
-	// _vm_hashmap_values: [Function: 20],
-	_vm_init: () => void,
-	_vm_loader_get_error_data: () => c_ptr,
-	_vm_loader_load: (data: c_ptr, size: c_uint32) => AsVm.LoaderError,
-	_vm_memory_get_mmid: (ptr: c_ptr) => c_uint32,
-	_vm_memory_get_ptr: (mmid: c_uint32) => c_ptr,
-	// _vm_reference: [Function: 45],
-	_vm_run: () => AsVm.Exception,
-	// _vm_string_cmp: [Function: 53],
-	// _vm_string_concat: [Function: 52],
-	// _vm_string_copy: [Function: 48],
-	_vm_string_create: (len: c_uint32) => c_uint32,
-	// _vm_string_cstr: [Function: 57],
-	// _vm_string_find: [Function: 55],
-	// _vm_string_free: [Function: 56],
-	// _vm_string_get: [Function: 54],
-	// _vm_string_insert: [Function: 50],
-	// _vm_string_intern: [Function: 47],
-	// _vm_string_slice: [Function: 51],
-	// _vm_thread_dequeue: [Function: 10],
-	// _vm_thread_free: [Function: 11],
-	// _vm_thread_grow: [Function: 7],
-	_vm_thread_kill: (thread: c_ptr, value: c_uint32, type: AsVm.Type) => void,
-	// _vm_thread_push: [Function: 13],
-	// _vm_thread_unwind: [Function: 8],
-	// _vm_thread_wait: [Function: 12],
+	_vm_hashmap_get: (hashmap: c_ptr, key: c_uint32, value: c_ptr) => void
+	_vm_hashmap_has: (hashmap: c_ptr, key: c_uint32) => boolean
+	_vm_hashmap_set: (hashmap: c_ptr, key: c_uint32, value: c_uint32, type: AsVm.Type) => void
+	_vm_hashmap_keys: (hashmap: c_ptr) => c_uint32
+	_vm_hashmap_values: (hashmap: c_ptr) => c_uint32
+	_vm_loader_get_error_data: () => c_ptr
+	_vm_loader_load: (data: c_ptr, size: c_uint32) => AsVm.LoaderError
+	_vm_memory_get_mmid: (ptr: c_ptr) => c_uint32
+	_vm_memory_get_ptr: (mmid: c_uint32) => c_ptr
+	_vm_string_cmp: (a: c_ptr, b: c_ptr) => boolean
+	_vm_string_concat: (a: c_ptr, b: c_ptr) => c_uint32
+	_vm_string_copy: (str: c_ptr, constant: boolean) => c_uint32
+	_vm_string_create: (len: c_uint32) => c_uint32
+	_vm_string_cstr: (cstr: c_ptr, len: c_uint32) => c_uint32
+	_vm_string_find: (str: c_ptr, needle: c_ptr, offset: c_uint32) => c_int32
+	_vm_string_get: (str: c_ptr, pos: c_int32, value: c_ptr) => AsVm.Exception
+	_vm_string_intern: (str: c_ptr) => c_uint32
+	_vm_string_slice: (str: c_ptr, start: c_int32, end: c_int32) => c_uint32
+	_vm_thread_kill: (thread: c_ptr, value: c_uint32, type: AsVm.Type) => void
+	_vm_thread_push: (thread: c_ptr) => void
 }
 
 export class AsVm {
@@ -159,7 +148,6 @@ export class AsVm {
 				const id = this.externMap.get(this.readWideString(str))
 				return (id === undefined) ? 0xFFFFFFFF : id
 			},
-			// _debug_print: (value) => console.log(value),
 			// ___assert_fail: (assertion, file, line, func) => console.log(`${this.readCString(assertion)} (in ${this.readCString(file)}:${this.readCString(func)}:${line}`)
 		}
 		return WebAssembly.instantiate(image, {env}).then((o) => {
@@ -444,9 +432,9 @@ export namespace AsVm {
 	]
 
 	export interface Trace {
-		pc: number,
-		line: number,
-		file?: string,
+		pc: number
+		line: number
+		file?: string
 		func?: string
 	}
 }
