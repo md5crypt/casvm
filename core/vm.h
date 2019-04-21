@@ -103,3 +103,5 @@ bool vm_fault_trace(vm_symbols_location_t* loc);
 vm_mmid_t vm_fault_get_thread(void);
 
 void vm_fault_recover(void);
+
+vm_mmid_t vm_get_current_thread(void);
