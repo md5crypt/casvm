@@ -1,6 +1,8 @@
 import { TextDecoder } from "util"
+import * as VmConstants from "../asc/src/vmConstants"
 
 const enum Config {
+	MMID_OFFSET = 128,
 	TABLE_BASE = 0,
 	TABLE_SIZE = 1024,
 	MEMORY_BASE = 1024,
@@ -11,15 +13,54 @@ const enum Config {
 
 export const enum void_ptr_t {}
 export const enum vm_mmid_t {}
-export const enum vm_variable_t {}
+export const enum vm_variable_t {
+	type = 0,
+	data = 4,
+	__sizeof = 8
+}
 export const enum vm_thread_t {}
-export const enum vm_string_t {}
-export const enum vm_array_t {}
-export const enum vm_hashmap_t {}
-export const enum vm_thread_t {}
-export const enum vm_exception_data_t {}
-export const enum vm_symbols_location_t {}
-export const enum wstring_t {}
+export const enum vm_string_t {
+	rcnt = 0,
+	size = 4,
+	data = 8,
+	__sizeof = 12
+}
+export const enum vm_array_t {
+	rcnt = 0,
+	size = 4,
+	used = 8,
+	offset = 12,
+	data = 16,
+	__sizeof = 20
+}
+export const enum vm_hashmap_t {
+	size = 0,
+	used = 4,
+	deleted = 8,
+	name = 12,
+	parent = 16,
+	type = 20,
+	code = 24,
+	data = 28,
+	__sizeof = 32
+}
+export const enum vm_exception_data_t {
+	f1 = 0,
+	f2 = 4,
+	__sizeof = 8
+}
+export const enum vm_symbols_location_t {
+	pc = 0,
+	line = 4,
+	file = 8,
+	function = 12,
+	__sizeof = 16
+}
+export const enum wstring_t {
+	size = 0,
+	data = 4,
+	__sizeof = 8
+}
 export const enum cstring_t {}
 export const enum int32_t {}
 export const enum uint32_t {}
@@ -93,9 +134,9 @@ interface AsVmExports {
 	_vm_fault_get_thread: () => vm_mmid_t
 	_vm_fault_recover: () => void
 	_vm_fault_trace: (loc: vm_symbols_location_t) => boolean
-	_vm_hashmap_get: (hashmap: vm_hashmap_t, key: vm_string_t, value: vm_variable_t) => void
-	_vm_hashmap_has: (hashmap: vm_hashmap_t, key: vm_string_t) => boolean
-	_vm_hashmap_set: (hashmap: vm_hashmap_t, key: vm_string_t, value: vm_variable_data_t, type: AsVm.Type) => void
+	_vm_hashmap_get: (hashmap: vm_hashmap_t, key: vm_mmid_t, value: vm_variable_t) => void
+	_vm_hashmap_has: (hashmap: vm_hashmap_t, key: vm_mmid_t) => boolean
+	_vm_hashmap_set: (hashmap: vm_hashmap_t, key: vm_mmid_t, value: vm_variable_data_t, type: AsVm.Type) => void
 	_vm_hashmap_keys: (hashmap: vm_hashmap_t) => vm_mmid_t
 	_vm_hashmap_values: (hashmap: vm_hashmap_t) => vm_mmid_t
 	_vm_loader_get_error_data: () => vm_loader_error_t
@@ -200,7 +241,9 @@ export class AsVm {
 	}
 
 	public readWideString(ptr: wstring_t): string {
-		return AsVm.utf16Decoder.decode(this.$u8.subarray(ptr + 4, ptr + 4 + (this.$u32[ptr / 4] * 2)))
+		const size = this.$u32[(ptr + wstring_t.size) / 4] * 2
+		const data = ptr + wstring_t.data
+		return AsVm.utf16Decoder.decode(this.$u8.subarray(data, data + size))
 	}
 
 	public readCString(ptr: cstring_t): string {
@@ -209,7 +252,7 @@ export class AsVm {
 
 	public createVmString(str: string): vm_mmid_t {
 		const mmid = this.$._vm_string_create(str.length)
-		const base = (this.$._vm_memory_get_ptr(mmid) + 8) / 2
+		const base = (this.$._vm_memory_get_ptr(mmid) + vm_string_t.data) / 2
 		for (let i = 0; i < str.length; i++) {
 			this.$u16[base + i] = str.charCodeAt(i)
 		}
@@ -217,13 +260,13 @@ export class AsVm {
 	}
 
 	public readVmString(mmid: vm_mmid_t): string {
-		return this.readWideString(this.$._vm_memory_get_ptr(mmid) + 4)
+		return this.readWideString(this.$._vm_memory_get_ptr(mmid) + vm_string_t.size)
 	}
 
 	public getExceptionMessage(exception: AsVm.Exception, trace?: boolean): string {
 		const ptr = this.$._vm_exception_data_get()
-		const f1 = this.$u32[ptr / 4]
-		const f2 = this.$u32[(ptr / 4) + 1]
+		const f1 = this.$u32[(ptr + vm_exception_data_t.f1) / 4]
+		const f2 = this.$u32[(ptr + vm_exception_data_t.f2) / 4]
 		let msg = `Exception ${AsVm.exceptionLut[exception]}`
 		switch (exception) {
 			case AsVm.Exception.USER:
@@ -237,7 +280,7 @@ export class AsVm {
 			case AsVm.Exception.ARITY:
 				msg += `: passed ${f1} arguments, expected ${f2}`
 				break
-			case  AsVm.Exception.TYPE:
+			case AsVm.Exception.TYPE:
 				msg += `: got "${AsVm.typeLut[f1]}", expected "${AsVm.typeLut[f2]}"`
 				break
 		}
@@ -249,13 +292,13 @@ export class AsVm {
 
 	public readTrace(): AsVm.Trace[] {
 		const trace: AsVm.Trace[] = []
-		const loc = this.vStackPush(24) as vm_symbols_location_t
+		const loc = this.vStackPush(vm_symbols_location_t.__sizeof) as vm_symbols_location_t
 		while (this.$._vm_fault_trace(loc)) {
-			const file = this.$u32[(loc / 4) + 2]
-			const func = this.$u32[(loc / 4) + 3]
+			const file = this.$u32[(loc + vm_symbols_location_t.file) / 4]
+			const func = this.$u32[(loc + vm_symbols_location_t.function) / 4]
 			const o: AsVm.Trace = {
-				pc: this.$u32[(loc / 4) + 0],
-				line: this.$u32[(loc / 4) + 1]
+				pc: this.$u32[(loc + vm_symbols_location_t.pc) / 4],
+				line: this.$u32[(loc + vm_symbols_location_t.line) / 4]
 			}
 			if (file) {
 				o.file = this.readWideString(file)
@@ -282,7 +325,9 @@ export class AsVm {
 		if (error != AsVm.LoaderError.NONE) {
 			throw new Error(this.getLoaderErrorMessage(error))
 		}
-		this.$._vm_call(0)
+		this.$._vm_call(0) // set up object tree
+		this.vmRun()
+		this.$._vm_call(1) // call constructors
 	}
 
 	public vmRun(): void {
@@ -360,21 +405,68 @@ export class AsVm {
 		return output
 	}
 
+	public static isType(child: AsVm.Type, parent: AsVm.Type){
+		return AsVm.typeMatrix[AsVm.typeLut.length * child + parent] == 1
+	}
+
+	public resolve(path: string, context?: vm_mmid_t): AsVm.Variable {
+		let current: vm_mmid_t = Config.MMID_OFFSET as number
+		const pathList = path.split('.')
+		let i = 0
+		if (!pathList[0] || (pathList[0] == 'root')) {
+			i += 1
+		} else if (context !== undefined) {
+			current = context
+		}
+		if (pathList.length == 0) {
+			return {
+				value: current as number,
+				type:this.$u32[(this.$._vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
+			}
+		}
+		const out = this.vStackPush(vm_variable_t.__sizeof) as vm_variable_t
+		while (true) {
+			const key = pathList[i]
+			const hashmap = this.$._vm_memory_get_ptr(current) as vm_hashmap_t
+			let type: AsVm.Type
+			if (key == 'parent') {
+				current = this.$u32[(hashmap + vm_hashmap_t.parent) / 4]
+				type = this.$u32[(this.$._vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
+			} else {
+				const keyMmid = this.$._vm_string_intern(this.$._vm_memory_get_ptr(this.createVmString(key)) as vm_string_t)
+				this.$._vm_hashmap_get(hashmap, keyMmid, out)
+				current = this.$u32[(out + vm_variable_t.data) / 4]
+				type = this.$u32[(out + vm_variable_t.type) / 4]
+			}
+			i += 1
+			if (i < pathList.length) {
+				if (!AsVm.isType(type, AsVm.Type.HASHMAP)) {
+					throw new Error(`Failed to resolve '${key}' in '${pathList.slice(0, i).join('.')}': expected 'hashmap' got '${AsVm.typeLut[type]}'`)
+				}
+			} else {
+				this.vStackPop()
+				return {value: current as number, type: type}
+			}
+		}
+	}
+
 	public getArgType(top: vm_variable_t, arg: number): AsVm.Type {
-		return this.$u32[(top / 4) - (2 * arg)]
+		return this.$u32[((top + vm_variable_t.type) - (vm_variable_t.__sizeof * arg)) / 4]
 	}
 
 	public getArgValue(top: vm_variable_t, arg: number, signed?: boolean): vm_variable_data_t {
-		return signed ? this.$32[(top / 4) + 1 - (2 * arg)] : this.$u32[(top / 4) + 1 - (2 * arg)]
+		const index = ((top + vm_variable_t.data) - (vm_variable_t.__sizeof * arg)) / 4
+		return signed ? this.$32[index] : this.$u32[index]
 	}
 
 	public setReturnValue(top: vm_variable_t, value: vm_variable_data_t, type: AsVm.Type): void {
-		this.$u32[(top / 4) + 2] = type
-		this.$u32[(top / 4) + 3] = value
+		this.$u32[(top + vm_variable_t.type + vm_variable_t.__sizeof) / 4] = type
+		this.$u32[(top + vm_variable_t.data + vm_variable_t.__sizeof) / 4] = value
 	}
 }
 
 export namespace AsVm {
+
 	export const enum Exception {
 		NONE,
 		YIELD,
@@ -423,52 +515,21 @@ export namespace AsVm {
 		FINISHED
 	}
 
-	export const enum Type {
-		INVALID,
-		UNDEFINED,
-		BOOLEAN,
-		INTEGER,
-		FLOAT,
-		STRING,
-		ARRAY,
-		CALLABLE,
-		FUNCTION,
-		EXTERN,
-		NATIVE,
-		NAMESPACE,
-		FRAME,
-		VECTOR,
-		HASHMAP,
-		NUMERIC,
-		INDEXABLE,
-		THREAD
-	}
+	export import Type = VmConstants.Type
 
-	export const typeLut = [
-		"INVALID",
-		"UNDEFINED",
-		"BOOLEAN",
-		"INTEGER",
-		"FLOAT",
-		"STRING",
-		"ARRAY",
-		"CALLABLE",
-		"FUNCTION",
-		"EXTERN",
-		"NATIVE",
-		"NAMESPACE",
-		"FRAME",
-		"VECTOR",
-		"HASHMAP",
-		"NUMERIC",
-		"INDEXABLE",
-		"THREAD"
-	]
+	export import typeLut = VmConstants.typeLut
+
+	export import typeMatrix = VmConstants.typeMatrix
 
 	export interface Trace {
 		pc: number
 		line: number
 		file?: string
 		func?: string
+	}
+
+	export interface Variable {
+		value: uint32_t
+		type: Type
 	}
 }

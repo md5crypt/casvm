@@ -53,8 +53,8 @@ void vm_call(uint32_t address) {
 		vm_variable_dereference(thread->stack->variable);
 	}
 	vm_thread_stackframe_pack(&thread->stack[0].frame, 0, 0xFFFFFFFF, 0);
-	vm_thread_stackframe_pack(&thread->stack[2].frame, address, 0, 0);
-	thread->top = 2;
+	vm_thread_stackframe_pack(&thread->stack[1].frame, address, 0, 0);
+	thread->top = 1;
 	thread->state = VM_THREAD_STATE_PAUSED;
 	vm_thread_push(thread);
 }

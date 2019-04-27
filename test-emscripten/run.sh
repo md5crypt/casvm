@@ -2,4 +2,4 @@
 make -C ../asc
 make -C ../emscripten
 node ../asc/build/asc.js -pcl -d ../test
-node ../emscripten/build/test.js
+node ../emscripten/build/emscripten/test.js

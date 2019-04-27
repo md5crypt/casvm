@@ -136,6 +136,8 @@ int main(int argc, char *argv[]) {
 			break;
 	}
 	vm_call(0);
+	vm_run();
+	vm_call(1);
 	return !run();
 }
 
