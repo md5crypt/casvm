@@ -90,7 +90,7 @@ vm_mmid_t vm_fault_get_thread() {
 }
 
 bool vm_fault_trace(vm_symbols_location_t* loc) {
-	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
+	vm_thread_t* thread = MMID_TO_PTR(last_fault.thread, vm_thread_t*);
 	vm_symbols_get_location(thread->stack[thread->top].frame.lower.link, loc);
 	return vm_thread_unwind(thread);
 }
