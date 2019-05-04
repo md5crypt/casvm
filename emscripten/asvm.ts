@@ -1,4 +1,3 @@
-import { TextDecoder } from "util"
 import * as VmConstants from "../asc/src/vmConstants"
 
 const enum Config {
@@ -18,7 +17,17 @@ export const enum vm_variable_t {
 	data = 4,
 	__sizeof = 8
 }
-export const enum vm_thread_t {}
+export const enum vm_thread_t {
+	rnct = 0,
+	size = 4,
+	top = 8,
+	state = 12,
+	next = 16,
+	prev = 20,
+	queue = 24,
+	stack = 28,
+	__sizeof = 32
+}
 export const enum vm_string_t {
 	rcnt = 0,
 	size = 4,
@@ -109,7 +118,7 @@ interface AsVmExports {
 	_memset: (ptr: ptr_t, value: uint32_t, num: uint32_t) => ptr_t
 	_vm_init: () => void
 	_vm_run: () => AsVm.Exception
-	_vm_call: (mmid: vm_mmid_t) => void
+	_vm_call: (pc: uint32_t) => void
 	_vm_get_current_thread: () => vm_mmid_t
 	_vm_array_create: (len: uint32_t) => vm_mmid_t
 	_vm_array_fill: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type, offset: int32_t, len: int32_t) => AsVm.Exception
@@ -176,6 +185,7 @@ export class AsVm {
 	private heapEnd: number
 	private vStack: number[]
 	private vStackTop: number
+	private internCache: Map<string, vm_mmid_t>
 
 	private constructor() {
 		this.memory = new WebAssembly.Memory({
@@ -193,6 +203,7 @@ export class AsVm {
 		this.heapEnd = 0
 		this.vStack = []
 		this.vStackTop = 0
+		this.internCache = new Map()
 	}
 
 	private async loadWasm(image: ArrayBuffer): Promise<AsVm> {
@@ -337,6 +348,11 @@ export class AsVm {
 		}
 	}
 
+	public vmCall(mmid: vm_mmid_t) {
+		const hashmap = this.$._vm_memory_get_ptr(mmid) as vm_hashmap_t
+		this.$._vm_call(this.$u32[(hashmap + vm_hashmap_t.code) / 4])
+	}
+
 	public getLoaderErrorMessage(error: AsVm.LoaderError): string {
 		switch (error) {
 			case AsVm.LoaderError.NONE:
@@ -409,9 +425,41 @@ export class AsVm {
 		return AsVm.typeMatrix[AsVm.typeLut.length * child + parent] == 1
 	}
 
-	public resolve(path: string, context?: vm_mmid_t): AsVm.Variable {
-		let current: vm_mmid_t = Config.MMID_OFFSET as number
+	public resolveAndSet(path: string, value: vm_variable_data_t, type: AsVm.Type, context?: vm_mmid_t) {
 		const pathList = path.split('.')
+		const key = pathList.pop()!
+		const variable = this.resolve(pathList, context)
+		if (!AsVm.isType(variable.type, AsVm.Type.HASHMAP)) {
+			throw new Error(`Failed to set '${path}': target is of type '${AsVm.typeLut[type]}', expected 'hashmap'`)
+		}
+		this.$._vm_hashmap_set(this.$._vm_memory_get_ptr(variable.value as vm_mmid_t) as vm_hashmap_t, this.intern(key), value, type)
+	}
+
+	public intern(str: string): vm_mmid_t {
+		const cached = this.internCache.get(str)
+		if (cached !== undefined) {
+			return cached
+		} else {
+			const mmid = this.$._vm_string_intern(this.$._vm_memory_get_ptr(this.createVmString(str)) as vm_string_t)
+			this.internCache.set(str, mmid)
+			return mmid
+		}
+	}
+
+	public getHashmapPath(mmid: vm_mmid_t): string {
+		const stack: string[] = []
+		let current = mmid
+		while (current != 0) {
+			const hashmap = this.$._vm_memory_get_ptr(current) as vm_hashmap_t
+			stack.push(this.readVmString(this.$u32[(hashmap + vm_hashmap_t.name) / 4]))
+			current = this.$u32[(hashmap + vm_hashmap_t.parent) / 4]
+		}
+		return stack.reverse().join('.')
+	}
+
+	public resolve(path: string | string[], context?: vm_mmid_t): AsVm.Variable {
+		let current: vm_mmid_t = Config.MMID_OFFSET as number
+		const pathList = path instanceof Array ? path : path.split('.')
 		let i = 0
 		if (!pathList[0] || (pathList[0] == 'root')) {
 			i += 1
@@ -433,8 +481,7 @@ export class AsVm {
 				current = this.$u32[(hashmap + vm_hashmap_t.parent) / 4]
 				type = this.$u32[(this.$._vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
 			} else {
-				const keyMmid = this.$._vm_string_intern(this.$._vm_memory_get_ptr(this.createVmString(key)) as vm_string_t)
-				this.$._vm_hashmap_get(hashmap, keyMmid, out)
+				this.$._vm_hashmap_get(hashmap, this.intern(key), out)
 				current = this.$u32[(out + vm_variable_t.data) / 4]
 				type = this.$u32[(out + vm_variable_t.type) / 4]
 			}
@@ -529,7 +576,7 @@ export namespace AsVm {
 	}
 
 	export interface Variable {
-		value: uint32_t
+		value: vm_variable_data_t
 		type: Type
 	}
 }

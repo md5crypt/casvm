@@ -1,3 +1,8 @@
+
+// inject TextDecoder to global scope
+import { TextDecoder } from "util"
+(global as any).TextDecoder = TextDecoder
+
 import { AsVm, vm_thread_t, vm_mmid_t} from "./asvm"
 import * as fs from "fs"
 import * as process from "process"

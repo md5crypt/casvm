@@ -355,6 +355,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				top -= 3;
 				break;
 			case VM_OP_SET_MEMBER_CONST:
+				SOFT_ASSERT_TYPE(top - 0, VM_HASHMAP_T);
 				vm_hashmap_set(VM_CAST_HASHMAP(top - 0), opcode.o24.value, top[-1].data.i, top[-1].type);
 				top -= 2;
 				break;
