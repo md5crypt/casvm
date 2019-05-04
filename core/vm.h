@@ -63,6 +63,11 @@ void vm_dereference(void* ptr, vm_type_t type);
 
 void vm_dereference_m(vm_mmid_t id, vm_type_t type);
 
+void vm_reference(void* ptr);
+
+void vm_reference_m(vm_mmid_t id);
+
+
 void vm_reference_type_ns(vm_variable_data_t data, vm_type_t type);
 
 inline static void vm_make_const(vm_mmid_t id) {
@@ -75,7 +80,7 @@ inline static void vm_reference_unsafe(void* ptr) {
 	}
 }
 
-inline static void vm_reference_m(vm_mmid_t id) {
+inline static void vm_reference_m_inline(vm_mmid_t id) {
 	uint32_t* cnt = MMID_TO_PTR(id, uint32_t*);
 	if (cnt[0] != VM_CONSTANT) {
 		cnt[0] += 1;
@@ -84,13 +89,13 @@ inline static void vm_reference_m(vm_mmid_t id) {
 
 inline static void vm_reference_inline(vm_variable_data_t data, vm_type_t type) {
 	if (vm_destructor_lut[type]) {
-		vm_reference_m(data);
+		vm_reference_m_inline(data);
 	}
 }
 
 inline static void vm_variable_reference(vm_variable_t v) {
 	if (vm_destructor_lut[v.type]) {
-		vm_reference_m(v.data.m);
+		vm_reference_m_inline(v.data.m);
 	}
 }
 

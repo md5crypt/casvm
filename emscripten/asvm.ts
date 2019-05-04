@@ -133,8 +133,10 @@ interface AsVmExports {
 	_vm_array_slice: (array: vm_array_t, start: int32_t, end: int32_t) => vm_mmid_t
 	_vm_array_unshift: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type) => vm_array_t
 	_vm_array_write: (dst: vm_array_t, src: vm_array_t, offset: int32_t, len: int32_t) => AsVm.Exception
-	_vm_reference: (value: vm_mmid_t, type: AsVm.Type) => void
-	_vm_dereference: (value: vm_mmid_t, type: AsVm.Type) => void
+	_vm_reference: (ptr: ptr_t) => void
+	_vm_reference_m: (mmid: vm_mmid_t) => void
+	_vm_dereference: (ptr: ptr_t, type: AsVm.Type) => void
+	_vm_dereference_m: (mmid: vm_mmid_t, type: AsVm.Type) => void
 	_vm_exception_data_get: () => vm_exception_data_t
 	_vm_exception_arity: (actual: uint32_t, expected: uint32_t) => void
 	_vm_exception_oob: (index: int32_t, size: uint32_t) => void

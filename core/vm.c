@@ -120,8 +120,12 @@ void vm_dereference_m(vm_mmid_t id, vm_type_t type) {
 	}
 }
 
-void vm_reference(vm_variable_data_t data, vm_type_t type) {
-	vm_reference_inline(data, type);
+void vm_reference(void* ptr) {
+	vm_reference_unsafe(ptr);
+}
+
+void vm_reference_m(vm_mmid_t id) {
+	vm_reference_m_inline(id);
 }
 
 vm_mmid_t vm_get_current_thread() {
