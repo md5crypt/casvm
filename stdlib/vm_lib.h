@@ -45,7 +45,6 @@
 do{ \
 	vm_mmid_t msg = vm_string_cstr(cstr, 0); \
 	top[1] = VM_VARIABLE_MMID(VM_STRING_T, msg); \
-	vm_exception_user(vm_string_to_wstr(MMID_TO_PTR(msg, vm_string_t*))); \
 	return VM_USER_E; \
 } while (0)
 

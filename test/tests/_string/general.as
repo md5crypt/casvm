@@ -16,3 +16,12 @@ function concat
 		assertEqual "aia!" (map key)
 		unset (map key)
 		assertEqual undefined (map key)
+
+function intern
+	local c = "aabb"
+	local a = "aa"
+	local b = "bb"
+	assertEqual c {_intern a + b}
+
+@throws_type function intern_type
+	return {_intern 0}

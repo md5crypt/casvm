@@ -399,6 +399,9 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 						vm_extern_call(hashmap->code.address, top, args)
 					);
 					if (e != VM_NONE_E) {
+						if (e == VM_USER_E) {
+							vm_exception_user(vm_string_to_wstr(MMID_TO_PTR(top[1].data.m, vm_string_t*))); \
+						}
 						top += 1;
 						ERROR(e);
 					}
@@ -497,6 +500,10 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 					NULL
 				);
 				ERROR(VM_USER_E);
+			case VM_OP_INTERN:
+				ASSERT_TYPE(top, VM_STRING_T);
+				top[0].data.m = vm_string_intern(MMID_TO_PTR(top->data.m, vm_string_t*));
+				break;
 			case VM_OP_ISTYPE:
 				vm_variable_dereference(top[0]);
 				top[0] = VM_VARIABLE_BOOL(VM_ISTYPE(top->type, opcode.o16.type));
