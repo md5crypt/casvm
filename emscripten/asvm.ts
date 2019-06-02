@@ -50,8 +50,9 @@ export const enum vm_hashmap_t {
 	parent = 16,
 	type = 20,
 	code = 24,
-	data = 28,
-	__sizeof = 32
+	dirty = 28,
+	data = 32,
+	__sizeof = 36
 }
 export const enum vm_exception_data_t {
 	f1 = 0,
@@ -512,6 +513,19 @@ export class AsVm {
 		this.$u32[(top + vm_variable_t.type + vm_variable_t.__sizeof) / 4] = type
 		this.$u32[(top + vm_variable_t.data + vm_variable_t.__sizeof) / 4] = value
 	}
+
+	public readHashmapKeys(hashmap: vm_hashmap_t, keys: AsVm.HashmapKeyList, output?: Object): Object {
+		const v = this.vStackPush(vm_hashmap_t.__sizeof) as vm_variable_t
+		const o: {[key: string]: any} = output || {}
+		for (const [key, type] of keys) {
+			this.$._vm_hashmap_get(hashmap, this.intern(key), v)
+			if (AsVm.isType(this.$u32[(v + vm_variable_t.type) / 4], type)) {
+				o[key] = this.$u32[(v + vm_variable_t.data) / 4]
+			}
+		}
+		this.vStackPop()
+		return o
+	}
 }
 
 export namespace AsVm {
@@ -581,4 +595,6 @@ export namespace AsVm {
 		value: vm_variable_data_t
 		type: Type
 	}
+
+	export type HashmapKeyList = [string, AsVm.Type][]
 }

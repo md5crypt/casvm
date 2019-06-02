@@ -20,6 +20,7 @@ typedef struct {
 		uint32_t address;
 		vm_native_t native;
 	} code;
+	uint32_t dirty;
 	vm_hashmap_pair_t data[0];
 } vm_hashmap_t;
 

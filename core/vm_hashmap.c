@@ -56,10 +56,12 @@ vm_mmid_t vm_hashmap_create(uint32_t size, vm_type_t type, vm_mmid_t name, vm_mm
 	map->name = name;
 	map->parent = parent;
 	map->code.address = (uint32_t)code;
+	map->dirty = true;
 	return id;
 }
 
 void vm_hashmap_set(vm_hashmap_t* map, vm_mmid_t key, vm_variable_data_t value, vm_type_t type) {
+	map->dirty = true;
 	vm_hashmap_pair_t* pair = get(map, key);
 	vm_mmid_t id = pair->key;
 	if ((id != MMID_NULL) && (id != TOMBSTONE)) {
