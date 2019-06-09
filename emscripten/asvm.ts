@@ -119,7 +119,7 @@ interface AsVmExports {
 	_memset: (ptr: ptr_t, value: uint32_t, num: uint32_t) => ptr_t
 	_vm_init: () => void
 	_vm_run: () => AsVm.Exception
-	_vm_call: (pc: uint32_t) => void
+	_vm_call: (pc: uint32_t, argc: uint32_t, argv: vm_variable_t) => void
 	_vm_get_current_thread: () => vm_mmid_t
 	_vm_array_create: (len: uint32_t) => vm_mmid_t
 	_vm_array_fill: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type, offset: int32_t, len: int32_t) => AsVm.Exception
@@ -339,9 +339,9 @@ export class AsVm {
 		if (error != AsVm.LoaderError.NONE) {
 			throw new Error(this.getLoaderErrorMessage(error))
 		}
-		this.$._vm_call(0) // set up object tree
+		this.$._vm_call(0, 0, 0) // set up object tree
 		this.vmRun()
-		this.$._vm_call(1) // call constructors
+		this.$._vm_call(1, 0, 0) // call constructors
 	}
 
 	public vmRun(): void {
@@ -351,9 +351,22 @@ export class AsVm {
 		}
 	}
 
-	public vmCall(mmid: vm_mmid_t) {
+	public vmCall(mmid: vm_mmid_t, ...args: AsVm.Variable[]) {
 		const hashmap = this.$._vm_memory_get_ptr(mmid) as vm_hashmap_t
-		this.$._vm_call(this.$u32[(hashmap + vm_hashmap_t.code) / 4])
+		let ptr: vm_variable_t = 0
+		if (args.length) {
+			ptr = this.vStackPush(args.length * vm_variable_t.__sizeof) as vm_variable_t
+			let offset = ptr
+			for (let i = 0; i < args.length; i++) {
+				this.$u32[(offset + vm_variable_t.type) / 4] = args[i].type
+				this.$u32[(offset + vm_variable_t.data) / 4] = args[i].value
+				offset += vm_variable_t.__sizeof
+			}
+		}
+		this.$._vm_call(this.$u32[(hashmap + vm_hashmap_t.code) / 4], args.length, ptr)
+		if (ptr) {
+			this.vStackPop()
+		}
 	}
 
 	public getLoaderErrorMessage(error: AsVm.LoaderError): string {
@@ -525,6 +538,24 @@ export class AsVm {
 		}
 		this.vStackPop()
 		return o
+	}
+
+	public readArray(array: vm_array_t): AsVm.Variable[] {
+		const v = this.vStackPush(vm_hashmap_t.__sizeof) as vm_variable_t
+		const size = this.$u32[(array + vm_array_t.used) / 4]
+		const out: AsVm.Variable[] = []
+		for (let i = 0; i < size; i++) {
+			const exception = this.$._vm_array_get(array, i, v)
+			if (exception != AsVm.Exception.NONE) {
+				throw new Error(AsVm.exceptionLut[exception])
+			}
+			out.push({
+				type: this.$u32[(v + vm_variable_t.type) / 4],
+				value: this.$u32[(v + vm_variable_t.data) / 4]
+			})
+		}
+		this.vStackPop()
+		return out
 	}
 }
 

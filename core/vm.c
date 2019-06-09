@@ -47,14 +47,20 @@ void vm_init() {
 	last_fault.exception = VM_NONE_E;
 }
 
-void vm_call(uint32_t address) {
+void vm_call(uint32_t address, uint32_t argc, const vm_variable_t* argv) {
 	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
+	if (thread->size < (argc + 2)) {
+		thread = vm_thread_grow(thread, (argc + 2) - thread->size);
+	}
+	for (uint32_t i = 0; i < argc; i++) {
+		thread->stack[i].variable = argv[i];
+	}
 	if (thread->state == VM_THREAD_STATE_FINISHED) {
 		vm_variable_dereference(thread->stack->variable);
 	}
-	vm_thread_stackframe_pack(&thread->stack[0].frame, 0, 0xFFFFFFFF, 0);
-	vm_thread_stackframe_pack(&thread->stack[1].frame, address, 0, 0);
-	thread->top = 1;
+	vm_thread_stackframe_pack(&thread->stack[argc].frame, 0, 0xFFFFFFFF, 0);
+	vm_thread_stackframe_pack(&thread->stack[argc + 1].frame, address, argc, argc);
+	thread->top = argc + 1;
 	thread->state = VM_THREAD_STATE_PAUSED;
 	vm_thread_push(thread);
 }

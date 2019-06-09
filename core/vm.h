@@ -54,7 +54,7 @@ extern const vm_opcode_t* vm_progmem;
 
 void vm_init(void);
 
-void vm_call(uint32_t address);
+void vm_call(uint32_t address, uint32_t argc, const vm_variable_t* argv);
 vm_exception_t vm_run(void);
 
 extern const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT];
