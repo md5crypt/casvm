@@ -225,6 +225,7 @@ export class AsVm {
 				return (id === undefined) ? 0xFFFFFFFF : id
 			}
 		}
+		// ; (env as any).___assert_fail = () => 0
 		return WebAssembly.instantiate(image, {env}).then((o) => {
 			this.$ = <AsVmExports>o.instance.exports
 			this.metadata = AsVm.readMetadata(o.module)
@@ -500,6 +501,7 @@ export class AsVm {
 				this.$._vm_hashmap_get(hashmap, this.intern(key), out)
 				current = this.$u32[(out + vm_variable_t.data) / 4]
 				type = this.$u32[(out + vm_variable_t.type) / 4]
+				this.$._vm_dereference_m(current, type)
 			}
 			i += 1
 			if (i < pathList.length) {
@@ -530,10 +532,13 @@ export class AsVm {
 	public readHashmapKeys(hashmap: vm_hashmap_t, keys: AsVm.HashmapKeyList, output?: Object): Object {
 		const v = this.vStackPush(vm_hashmap_t.__sizeof) as vm_variable_t
 		const o: {[key: string]: any} = output || {}
-		for (const [key, type] of keys) {
+		for (const [key, expectedType] of keys) {
 			this.$._vm_hashmap_get(hashmap, this.intern(key), v)
-			if (AsVm.isType(this.$u32[(v + vm_variable_t.type) / 4], type)) {
-				o[key] = this.$u32[(v + vm_variable_t.data) / 4]
+			const type: AsVm.Type = this.$u32[(v + vm_variable_t.type) / 4]
+			const value: vm_variable_data_t = this.$u32[(v + vm_variable_t.data) / 4]
+			this.$._vm_dereference_m(value as vm_mmid_t, type)
+			if (AsVm.isType(type, expectedType)) {
+				o[key] = value
 			}
 		}
 		this.vStackPop()
@@ -549,10 +554,10 @@ export class AsVm {
 			if (exception != AsVm.Exception.NONE) {
 				throw new Error(AsVm.exceptionLut[exception])
 			}
-			out.push({
-				type: this.$u32[(v + vm_variable_t.type) / 4],
-				value: this.$u32[(v + vm_variable_t.data) / 4]
-			})
+			const type: AsVm.Type = this.$u32[(v + vm_variable_t.type) / 4]
+			const value: vm_variable_data_t = this.$u32[(v + vm_variable_t.data) / 4]
+			this.$._vm_dereference_m(value as vm_mmid_t, type)
+			out.push({type, value})
 		}
 		this.vStackPop()
 		return out

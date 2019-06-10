@@ -108,6 +108,18 @@ bool run() {
 	}
 }
 
+void memstat() {
+	uint32_t stat[] = {
+		vm_mem_const.used,
+		vm_mem_hashmap.used,
+		vm_mem_array.used,
+		vm_mem_string.used,
+		vm_mem_thread.used,
+		vm_memmap.used - vm_memmap.stack.used
+	};
+	printf("const: %d, hashmap: %d, array: %d, string: %d, thread: %d, memmap: %d\n", stat[0], stat[1], stat[2], stat[3], stat[4], stat[5]);
+}
+
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		puts("usage: vm [input file]");
@@ -138,7 +150,10 @@ int main(int argc, char *argv[]) {
 	vm_call(0, 0, NULL);
 	vm_run();
 	vm_call(1, 0, NULL);
-	return !run();
+	memstat();
+	bool result = run();
+	memstat();
+	return !result;
 }
 
 vm_exception_t vm_extern_call(uint32_t id, vm_variable_t* top, uint32_t arguments) {

@@ -19,16 +19,15 @@ typedef union {
 	vm_stackframe_t frame;
 } vm_stackitem_t;
 
-typedef enum {
-	VM_THREAD_STATE_PAUSED,
-	VM_THREAD_STATE_FINISHED,
-} vm_thread_state_t;
+#define VM_THREAD_FLAG_FINISHED (1 << 0)
+#define VM_THREAD_FLAG_DETACHED (1 << 1)
+
 
 typedef struct {
 	uint32_t rcnt;
 	uint32_t size;
 	uint32_t top;
-	vm_thread_state_t state;
+	uint32_t flags;
 	vm_mmid_t next;
 	vm_mmid_t prev;
 	vm_mmid_t queue;

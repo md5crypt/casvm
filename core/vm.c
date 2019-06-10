@@ -19,7 +19,6 @@ vm_memory_t vm_mem_thread;
 const vm_opcode_t* vm_progmem = NULL;
 vm_mmid_t vm_root;
 
-static vm_mmid_t main_thread;
 static vm_mmid_t current_thread;
 
 static struct {
@@ -41,27 +40,19 @@ void vm_init() {
 	vm_memory_init(&vm_mem_string, MEMORY_STRING_SIZE);
 	vm_memory_init(&vm_mem_thread, MEMORY_THREAD_SIZE);
 	vm_stringset_init(STRINGSET_SIZE);
-	main_thread = vm_thread_create(0);
-	vm_make_const(main_thread);
 	vm_symbols_clear();
 	last_fault.exception = VM_NONE_E;
 }
 
 void vm_call(uint32_t address, uint32_t argc, const vm_variable_t* argv) {
-	vm_thread_t* thread = MMID_TO_PTR(main_thread, vm_thread_t*);
-	if (thread->size < (argc + 2)) {
-		thread = vm_thread_grow(thread, (argc + 2) - thread->size);
-	}
+	vm_thread_t* thread = MMID_TO_PTR(vm_thread_create(argc + 4), vm_thread_t*);
+	thread->flags |= VM_THREAD_FLAG_DETACHED;
 	for (uint32_t i = 0; i < argc; i++) {
 		thread->stack[i].variable = argv[i];
 	}
-	if (thread->state == VM_THREAD_STATE_FINISHED) {
-		vm_variable_dereference(thread->stack->variable);
-	}
-	vm_thread_stackframe_pack(&thread->stack[argc].frame, 0, 0xFFFFFFFF, 0);
-	vm_thread_stackframe_pack(&thread->stack[argc + 1].frame, address, argc, argc);
-	thread->top = argc + 1;
-	thread->state = VM_THREAD_STATE_PAUSED;
+	vm_thread_stackframe_pack(&thread->stack[argc + 0].frame, 0, 0xFFFFFFFF, 0);
+	vm_thread_stackframe_pack(&thread->stack[argc + 2].frame, address, argc, argc);
+	thread->top = argc + 2;
 	vm_thread_push(thread);
 }
 
@@ -72,22 +63,26 @@ vm_exception_t vm_run() {
 	while (true) {
 		vm_mmid_t thread_id = vm_thread_pop();
 		if (thread_id == MMID_NULL) {
+			current_thread = MMID_NULL;
 			return VM_NONE_E;
 		}
 		current_thread = thread_id;
+		vm_reference_m(thread_id);
 		vm_exception_t e = vm_mainloop(thread_id);
 		if (e != VM_YIELD_E && e != VM_NONE_E) {
+			current_thread = MMID_NULL;
 			last_fault.thread = thread_id;
 			last_fault.exception = e;
 			return e;
 		}
+		vm_dereference_m(thread_id, VM_THREAD_T);
 	}
-	current_thread = MMID_NULL;
 }
 
 void vm_fault_recover() {
 	if (last_fault.exception != VM_NONE_E) {
 		last_fault.exception = VM_NONE_E;
+		vm_dereference_m(last_fault.thread, VM_THREAD_T);
 	}
 }
 

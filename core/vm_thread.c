@@ -33,7 +33,7 @@ vm_mmid_t vm_thread_create(uint32_t size) {
 	ptr->next = MMID_NULL;
 	ptr->prev = MMID_NULL;
 	ptr->queue = MMID_NULL;
-	ptr->state = VM_THREAD_STATE_PAUSED;
+	ptr->flags = 0;
 	return id;
 }
 
@@ -47,7 +47,7 @@ vm_thread_t* vm_thread_grow(vm_thread_t* thread, uint32_t amount) {
 	new_ptr->next = old_ptr->next;
 	new_ptr->prev = old_ptr->prev;
 	new_ptr->queue = old_ptr->queue;
-	new_ptr->state = old_ptr->state;
+	new_ptr->flags = old_ptr->flags;
 	memcpy(new_ptr->stack, old_ptr->stack, sizeof(vm_variable_t) * old_ptr->size);
 	vm_memory_replace(&vm_mem_thread, old_id, new_id);
 	return new_ptr;
@@ -75,7 +75,7 @@ bool vm_thread_unwind(vm_thread_t* thread) {
 }
 
 void vm_thread_kill(vm_thread_t* thread, vm_variable_data_t value, vm_type_t type) {
-	if (thread->state == VM_THREAD_STATE_FINISHED) {
+	if (thread->flags & VM_THREAD_FLAG_FINISHED) {
 		return;
 	}
 	if (active_queue.head == PTR_TO_MMID(thread)) {
@@ -101,7 +101,7 @@ void vm_thread_kill(vm_thread_t* thread, vm_variable_data_t value, vm_type_t typ
 	vm_thread_dequeue(thread);
 	while (vm_thread_unwind(thread));
 	thread->stack[0].variable = VM_VARIABLE(type, value);
-	thread->state = VM_THREAD_STATE_FINISHED;
+	thread->flags |= VM_THREAD_FLAG_FINISHED;
 }
 
 void vm_thread_free(vm_thread_t* thread) {
@@ -132,14 +132,18 @@ void vm_thread_dequeue(vm_thread_t* thread) {
 
 void vm_thread_push(vm_thread_t* thread) {
 	vm_thread_t* first = traverse_backward(thread);
-	if (active_queue.tail == MMID_NULL) {
-		active_queue.head = PTR_TO_MMID(first);
-	} else {
-		vm_thread_t* tail = MMID_TO_PTR(active_queue.tail, vm_thread_t*);
-		tail->next = PTR_TO_MMID(first);
-		first->prev = active_queue.tail;
+	vm_mmid_t first_mmid = PTR_TO_MMID(first);
+	// only take action if thread is not already in the active queue
+	if (active_queue.head != first_mmid) {
+		if (active_queue.tail == MMID_NULL) {
+			active_queue.head = first_mmid;
+		} else {
+			vm_thread_t* tail = MMID_TO_PTR(active_queue.tail, vm_thread_t*);
+			tail->next = first_mmid;
+			first->prev = active_queue.tail;
+		}
+		active_queue.tail = PTR_TO_MMID(thread);
 	}
-	active_queue.tail = PTR_TO_MMID(thread);
 }
 
 vm_mmid_t vm_thread_pop() {

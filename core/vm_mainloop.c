@@ -189,7 +189,7 @@ inline static bool eq(vm_variable_t* top, bool strict) {
 
 vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 	vm_thread_t* thread = MMID_TO_PTR(thread_id, vm_thread_t*);
-	if (thread->state == VM_THREAD_STATE_FINISHED) {
+	if (thread->flags & VM_THREAD_FLAG_FINISHED) {
 		return VM_NONE_E;
 	}
 	vm_variable_t* bottom = (vm_variable_t*)thread->stack;
@@ -459,7 +459,7 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 			} case VM_OP_WAIT:{
 				ASSERT_TYPE(top, VM_THREAD_T);
 				vm_thread_t* child = MMID_TO_PTR(top->data.m, vm_thread_t*);
-				if (child->state == VM_THREAD_STATE_FINISHED) {
+				if (child->flags & VM_THREAD_FLAG_FINISHED) {
 					top[0] = child->stack->variable;
 					vm_variable_reference(top[0]);
 					vm_dereference(child, VM_THREAD_T);
@@ -479,8 +479,11 @@ vm_exception_t vm_mainloop(vm_mmid_t thread_id) {
 				if ((base - arguments) == bottom) {
 					bottom[0] = top[0];
 					thread->top = 0;
-					thread->state = VM_THREAD_STATE_FINISHED;
+					thread->flags |= VM_THREAD_FLAG_FINISHED;
 					vm_thread_dequeue(thread);
+					if (thread->flags & VM_THREAD_FLAG_DETACHED) {
+						vm_dereference(thread, VM_THREAD_T);
+					}
 					return VM_NONE_E;
 				}
 				vm_stackframe_t* frame = (vm_stackframe_t*)base;
