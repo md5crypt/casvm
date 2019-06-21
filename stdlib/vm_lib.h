@@ -32,12 +32,12 @@
 	}
 
 #define ASSERT_TYPE(n, t) if (top[-(n)].type != t) { \
-	vm_exception_type(t, top[-(n)].type); \
+	vm_exception_type(top[-(n)].type, t); \
 	return VM_TYPE_E; \
 }
 
 #define ASSERT_TYPE_WEAK(n, t) if (!VM_ISTYPE(top[-(n)].type, t)) { \
-	vm_exception_type(t, top[-(n)].type); \
+	vm_exception_type(top[-(n)].type, t); \
 	return VM_TYPE_E; \
 }
 
