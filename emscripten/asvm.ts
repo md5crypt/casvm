@@ -175,6 +175,7 @@ export class AsVm {
 	public $16!: Int16Array
 	public $u8!: Uint8Array
 	public $8!: Int8Array
+	public $f32!: Float32Array
 	public metadata!: EMScriptenMetadata
 
 	private static asciiDecoder = new TextDecoder('utf-8')
@@ -225,7 +226,7 @@ export class AsVm {
 				return (id === undefined) ? 0xFFFFFFFF : id
 			}
 		}
-		// ; (env as any).___assert_fail = () => 0
+		; (env as any).___assert_fail = () => 0
 		return WebAssembly.instantiate(image, {env}).then((o) => {
 			this.$ = <AsVmExports>o.instance.exports
 			this.metadata = AsVm.readMetadata(o.module)
@@ -404,6 +405,7 @@ export class AsVm {
 		this.$16 = new Int16Array(this.memory.buffer)
 		this.$u8 = new Uint8Array(this.memory.buffer)
 		this.$8 = new Int8Array(this.memory.buffer)
+		this.$f32 = new Float32Array(this.memory.buffer)
 	}
 
 	private static readMetadata(module: WebAssembly.Module): EMScriptenMetadata {
@@ -535,7 +537,14 @@ export class AsVm {
 		for (const [key, expectedType] of keys) {
 			this.$._vm_hashmap_get(hashmap, this.intern(key), v)
 			const type: AsVm.Type = this.$u32[(v + vm_variable_t.type) / 4]
-			const value: vm_variable_data_t = this.$u32[(v + vm_variable_t.data) / 4]
+			let value: number
+			if (type == AsVm.Type.INTEGER) {
+				value = this.$32[(v + vm_variable_t.data) / 4]
+			} else if (type == AsVm.Type.FLOAT) {
+				value = this.$f32[(v + vm_variable_t.data) / 4]
+			} else {
+				value = this.$u32[(v + vm_variable_t.data) / 4]
+			}
 			this.$._vm_dereference_m(value as vm_mmid_t, type)
 			if (AsVm.isType(type, expectedType)) {
 				o[key] = value
