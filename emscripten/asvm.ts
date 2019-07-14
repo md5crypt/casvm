@@ -2,12 +2,9 @@ import * as VmConstants from "../asc/src/vmConstants"
 
 const enum Config {
 	MMID_OFFSET = 128,
-	TABLE_BASE = 0,
 	TABLE_SIZE = 1024,
-	MEMORY_BASE = 1024,
 	MEMORY_SIZE_INITIAL = 1024 * 1024 * 8,
-	MEMORY_SIZE_MAX = 1024 * 1024 * 128,
-	STACK_SIZE = 1024 * 1024 * 2
+	MEMORY_SIZE_MAX = 1024 * 1024 * 128
 }
 
 export const enum void_ptr_t {}
@@ -92,79 +89,81 @@ type AsVmExtern = (top: vm_variable_t, argc: uint32_t) => AsVm.Exception
 interface WAsmEnvBase {
 	memory: WebAssembly.Memory
 	table: WebAssembly.Table
-	_sbrk: (delta: uint32_t) => void_ptr_t
-	__memory_base: uint32_t
-	__table_base: uint32_t
+	sbrk: (delta: uint32_t) => void_ptr_t
 }
 
 interface AsVmEnv extends WAsmEnvBase {
-	_emscripten_memcpy_big: (dest: ptr_t, src: ptr_t, num: uint32_t) => ptr_t
-	_lib_float2str: (value: float32_t) => vm_mmid_t
-	_lib_int2str: (value: int32_t) => vm_mmid_t
-	_vm_extern_call: (id: uint32_t, top: vm_variable_t, argc: uint32_t) => AsVm.Exception
-	_vm_extern_resolve: (str: wstring_t) => uint32_t
+	emscripten_memcpy_big: (dest: ptr_t, src: ptr_t, num: uint32_t) => ptr_t
+	lib_float2str: (value: float32_t) => vm_mmid_t
+	lib_int2str: (value: int32_t) => vm_mmid_t
+	vm_extern_call: (id: uint32_t, top: vm_variable_t, argc: uint32_t) => AsVm.Exception
+	vm_extern_resolve: (str: wstring_t) => uint32_t
 }
 
-interface EMScriptenMetadata {
+/*interface EMScriptenMetadata {
 	vesrion: [number, number]
 	abiVersion: [number, number]
 	memSize: number
 	tableSize: number
-}
+}*/
 
 interface AsVmExports {
-	_free: (ptr: ptr_t) => void
-	_malloc: (size: uint32_t) => ptr_t
-	_memcpy: (dest: ptr_t, src: ptr_t, num: uint32_t) => ptr_t
-	_memset: (ptr: ptr_t, value: uint32_t, num: uint32_t) => ptr_t
-	_vm_init: () => void
-	_vm_run: () => AsVm.Exception
-	_vm_call: (pc: uint32_t, argc: uint32_t, argv: vm_variable_t) => void
-	_vm_get_current_thread: () => vm_mmid_t
-	_vm_array_create: (len: uint32_t) => vm_mmid_t
-	_vm_array_fill: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type, offset: int32_t, len: int32_t) => AsVm.Exception
-	_vm_array_find: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type, offset: int32_t) => AsVm.Exception
-	_vm_array_get: (array: vm_array_t, pos: int32_t, value: vm_variable_t) => AsVm.Exception
-	_vm_array_pop: (array: vm_array_t, value: vm_variable_t) => AsVm.Exception
-	_vm_array_push: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type) => vm_array_t
-	_vm_array_resize: (array: vm_array_t, size: uint32_t) => vm_array_t
-	_vm_array_reverse: (array: vm_array_t) => void
-	_vm_array_set: (array: vm_array_t, pos: int32_t, value: vm_variable_data_t, type: AsVm.Type) => AsVm.Exception
-	_vm_array_shift: (array: vm_array_t, value: vm_variable_t) => AsVm.Exception
-	_vm_array_slice: (array: vm_array_t, start: int32_t, end: int32_t) => vm_mmid_t
-	_vm_array_unshift: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type) => vm_array_t
-	_vm_array_write: (dst: vm_array_t, src: vm_array_t, offset: int32_t, len: int32_t) => AsVm.Exception
-	_vm_reference: (ptr: ptr_t) => void
-	_vm_reference_m: (mmid: vm_mmid_t) => void
-	_vm_dereference: (ptr: ptr_t, type: AsVm.Type) => void
-	_vm_dereference_m: (mmid: vm_mmid_t, type: AsVm.Type) => void
-	_vm_exception_data_get: () => vm_exception_data_t
-	_vm_exception_arity: (actual: uint32_t, expected: uint32_t) => void
-	_vm_exception_oob: (index: int32_t, size: uint32_t) => void
-	_vm_exception_type: (actual: AsVm.Type, expected: AsVm.Type) => void
-	_vm_exception_user: (wstring: wstring_t) => void
-	_vm_fault_get_thread: () => vm_mmid_t
-	_vm_fault_recover: () => void
-	_vm_fault_trace: (loc: vm_symbols_location_t) => boolean
-	_vm_hashmap_get: (hashmap: vm_hashmap_t, key: vm_mmid_t, value: vm_variable_t) => void
-	_vm_hashmap_has: (hashmap: vm_hashmap_t, key: vm_mmid_t) => boolean
-	_vm_hashmap_set: (hashmap: vm_hashmap_t, key: vm_mmid_t, value: vm_variable_data_t, type: AsVm.Type) => void
-	_vm_hashmap_keys: (hashmap: vm_hashmap_t) => vm_mmid_t
-	_vm_hashmap_values: (hashmap: vm_hashmap_t) => vm_mmid_t
-	_vm_loader_get_error_data: () => vm_loader_error_t
-	_vm_loader_load: (data: void_ptr_t, size: uint32_t) => AsVm.LoaderError
-	_vm_memory_get_mmid: (ptr: ptr_t) => vm_mmid_t
-	_vm_memory_get_ptr: (mmid: vm_mmid_t) => ptr_t
-	_vm_string_cmp: (a: vm_string_t, b: vm_string_t) => boolean
-	_vm_string_concat: (a: vm_string_t, b: vm_string_t) => vm_mmid_t
-	_vm_string_copy: (str: vm_string_t, constant: boolean) => vm_mmid_t
-	_vm_string_create: (len: uint32_t) => vm_mmid_t
-	_vm_string_find: (str: vm_string_t, needle: vm_string_t, offset: int32_t) => int32_t
-	_vm_string_get: (str: vm_string_t, pos: int32_t, value: vm_variable_data_t) => AsVm.Exception
-	_vm_string_intern: (str: vm_string_t) => vm_mmid_t
-	_vm_string_slice: (str: vm_string_t, start: int32_t, end: int32_t) => vm_mmid_t
-	_vm_thread_kill: (thread: vm_thread_t, value: vm_variable_data_t, type: AsVm.Type) => void
-	_vm_thread_push: (thread: vm_thread_t) => void
+	__data_end: number,
+	stackSave: () => ptr_t,
+	stackAlloc: (amount: uint32_t) => ptr_t,
+	stackRestore: (ptr: ptr_t) => void,
+	free: (ptr: ptr_t) => void
+	malloc: (size: uint32_t) => ptr_t
+	memcpy: (dest: ptr_t, src: ptr_t, num: uint32_t) => ptr_t
+	memset: (ptr: ptr_t, value: uint32_t, num: uint32_t) => ptr_t
+	vm_init: () => void
+	vm_run: () => AsVm.Exception
+	vm_call: (pc: uint32_t, argc: uint32_t, argv: vm_variable_t) => void
+	vm_get_current_thread: () => vm_mmid_t
+	vm_array_create: (len: uint32_t) => vm_mmid_t
+	vm_array_fill: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type, offset: int32_t, len: int32_t) => AsVm.Exception
+	vm_array_find: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type, offset: int32_t) => AsVm.Exception
+	vm_array_get: (array: vm_array_t, pos: int32_t, value: vm_variable_t) => AsVm.Exception
+	vm_array_pop: (array: vm_array_t, value: vm_variable_t) => AsVm.Exception
+	vm_array_push: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type) => vm_array_t
+	vm_array_resize: (array: vm_array_t, size: uint32_t) => vm_array_t
+	vm_array_reverse: (array: vm_array_t) => void
+	vm_array_set: (array: vm_array_t, pos: int32_t, value: vm_variable_data_t, type: AsVm.Type) => AsVm.Exception
+	vm_array_shift: (array: vm_array_t, value: vm_variable_t) => AsVm.Exception
+	vm_array_slice: (array: vm_array_t, start: int32_t, end: int32_t) => vm_mmid_t
+	vm_array_unshift: (array: vm_array_t, value: vm_variable_data_t, type: AsVm.Type) => vm_array_t
+	vm_array_write: (dst: vm_array_t, src: vm_array_t, offset: int32_t, len: int32_t) => AsVm.Exception
+	vm_reference: (ptr: ptr_t) => void
+	vm_reference_m: (mmid: vm_mmid_t) => void
+	vm_dereference: (ptr: ptr_t, type: AsVm.Type) => void
+	vm_dereference_m: (mmid: vm_mmid_t, type: AsVm.Type) => void
+	vm_exception_data_get: () => vm_exception_data_t
+	vm_exception_arity: (actual: uint32_t, expected: uint32_t) => void
+	vm_exception_oob: (index: int32_t, size: uint32_t) => void
+	vm_exception_type: (actual: AsVm.Type, expected: AsVm.Type) => void
+	vm_exception_user: (wstring: wstring_t) => void
+	vm_fault_get_thread: () => vm_mmid_t
+	vm_fault_recover: () => void
+	vm_fault_trace: (loc: vm_symbols_location_t) => boolean
+	vm_hashmap_get: (hashmap: vm_hashmap_t, key: vm_mmid_t, value: vm_variable_t) => void
+	vm_hashmap_has: (hashmap: vm_hashmap_t, key: vm_mmid_t) => boolean
+	vm_hashmap_set: (hashmap: vm_hashmap_t, key: vm_mmid_t, value: vm_variable_data_t, type: AsVm.Type) => void
+	vm_hashmap_keys: (hashmap: vm_hashmap_t) => vm_mmid_t
+	vm_hashmap_values: (hashmap: vm_hashmap_t) => vm_mmid_t
+	vm_loader_get_error_data: () => vm_loader_error_t
+	vm_loader_load: (data: void_ptr_t, size: uint32_t) => AsVm.LoaderError
+	vm_memory_get_mmid: (ptr: ptr_t) => vm_mmid_t
+	vm_memory_get_ptr: (mmid: vm_mmid_t) => ptr_t
+	vm_string_cmp: (a: vm_string_t, b: vm_string_t) => boolean
+	vm_string_concat: (a: vm_string_t, b: vm_string_t) => vm_mmid_t
+	vm_string_copy: (str: vm_string_t, constant: boolean) => vm_mmid_t
+	vm_string_create: (len: uint32_t) => vm_mmid_t
+	vm_string_find: (str: vm_string_t, needle: vm_string_t, offset: int32_t) => int32_t
+	vm_string_get: (str: vm_string_t, pos: int32_t, value: vm_variable_data_t) => AsVm.Exception
+	vm_string_intern: (str: vm_string_t) => vm_mmid_t
+	vm_string_slice: (str: vm_string_t, start: int32_t, end: int32_t) => vm_mmid_t
+	vm_thread_kill: (thread: vm_thread_t, value: vm_variable_data_t, type: AsVm.Type) => void
+	vm_thread_push: (thread: vm_thread_t) => void
 }
 
 export class AsVm {
@@ -176,7 +175,6 @@ export class AsVm {
 	public $u8!: Uint8Array
 	public $8!: Int8Array
 	public $f32!: Float32Array
-	public metadata!: EMScriptenMetadata
 
 	private static asciiDecoder = new TextDecoder('utf-8')
 	private static utf16Decoder = new TextDecoder('utf-16le')
@@ -188,7 +186,6 @@ export class AsVm {
 	private heapTop: number
 	private heapEnd: number
 	private vStack: number[]
-	private vStackTop: number
 	private internCache: Map<string, vm_mmid_t>
 
 	private constructor() {
@@ -206,7 +203,6 @@ export class AsVm {
 		this.heapTop = 0
 		this.heapEnd = 0
 		this.vStack = []
-		this.vStackTop = 0
 		this.internCache = new Map()
 	}
 
@@ -214,41 +210,38 @@ export class AsVm {
 		const env: AsVmEnv = {
 			memory: this.memory,
 			table: this.table,
-			__memory_base: Config.MEMORY_BASE as number,
-			__table_base: Config.TABLE_BASE as number,
-			_emscripten_memcpy_big: (dest, src, num) => (this.$u8.set(this.$u8.subarray(src, src + num), dest), dest),
-			_sbrk: (delta) => this.sbrk(delta),
-			_lib_float2str: (value) => this.createVmString((Math.round(value * 10000000) / 10000000).toString()),
-			_lib_int2str: (value) => this.createVmString(value.toString()),
-			_vm_extern_call: (id, top, argc) => this.externTable[id](top, argc),
-			_vm_extern_resolve: (str) => {
+			emscripten_memcpy_big: (dest, src, num) => (this.$u8.set(this.$u8.subarray(src, src + num), dest), dest),
+			sbrk: (delta) => this.sbrk(delta),
+			lib_float2str: (value) => this.createVmString((Math.round(value * 10000000) / 10000000).toString()),
+			lib_int2str: (value) => this.createVmString(value.toString()),
+			vm_extern_call: (id, top, argc) => this.externTable[id](top, argc),
+			vm_extern_resolve: (str) => {
 				const id = this.externMap.get(this.readWideString(str))
 				return (id === undefined) ? 0xFFFFFFFF : id
 			}
 		}
-		; (env as any).___assert_fail = () => 0
+		; (env as any).__assert_fail = () => 0
+		; (env as any).debug_log = (x: number) => console.log(x)
+		; (env as any).debug_logf = (x: number) => console.log(x)
 		return WebAssembly.instantiate(image, {env}).then((o) => {
 			this.$ = <AsVmExports>o.instance.exports
-			this.metadata = AsVm.readMetadata(o.module)
-			this.heapTop = this.metadata.memSize + Config.MEMORY_BASE + Config.STACK_SIZE
+			this.heapTop = this.$.stackSave()
 			this.heapEnd = Config.MEMORY_SIZE_INITIAL
-			this.vStackTop = this.heapTop
 			this.updateHeapViews()
 			return this
 		})
 	}
 
 	public vStackPush(amount: number): ptr_t {
-		this.vStack.push(this.vStackTop)
-		this.vStackTop -= amount
-		return this.vStackTop
+		this.vStack.push(this.$.stackSave())
+		return this.$.stackAlloc(amount)
 	}
 
 	public vStackPop(): void {
 		if (this.vStack.length == 0) {
 			throw new Error('VStack is empty!')
 		}
-		this.vStackTop = this.vStack.pop()!
+		this.$.stackRestore(this.vStack.pop()!)
 	}
 
 	public static async create(image: ArrayBuffer): Promise<AsVm> {
@@ -267,8 +260,8 @@ export class AsVm {
 	}
 
 	public createVmString(str: string): vm_mmid_t {
-		const mmid = this.$._vm_string_create(str.length)
-		const base = (this.$._vm_memory_get_ptr(mmid) + vm_string_t.data) / 2
+		const mmid = this.$.vm_string_create(str.length)
+		const base = (this.$.vm_memory_get_ptr(mmid) + vm_string_t.data) / 2
 		for (let i = 0; i < str.length; i++) {
 			this.$u16[base + i] = str.charCodeAt(i)
 		}
@@ -276,11 +269,11 @@ export class AsVm {
 	}
 
 	public readVmString(mmid: vm_mmid_t): string {
-		return this.readWideString(this.$._vm_memory_get_ptr(mmid) + vm_string_t.size)
+		return this.readWideString(this.$.vm_memory_get_ptr(mmid) + vm_string_t.size)
 	}
 
 	public getExceptionMessage(exception: AsVm.Exception, trace?: boolean): string {
-		const ptr = this.$._vm_exception_data_get()
+		const ptr = this.$.vm_exception_data_get()
 		const f1 = this.$u32[(ptr + vm_exception_data_t.f1) / 4]
 		const f2 = this.$u32[(ptr + vm_exception_data_t.f2) / 4]
 		let msg = `Exception ${AsVm.exceptionLut[exception]}`
@@ -309,7 +302,7 @@ export class AsVm {
 	public readTrace(): AsVm.Trace[] {
 		const trace: AsVm.Trace[] = []
 		const loc = this.vStackPush(vm_symbols_location_t.__sizeof) as vm_symbols_location_t
-		while (this.$._vm_fault_trace(loc)) {
+		while (this.$.vm_fault_trace(loc)) {
 			const file = this.$u32[(loc + vm_symbols_location_t.file) / 4]
 			const func = this.$u32[(loc + vm_symbols_location_t.function) / 4]
 			const o: AsVm.Trace = {
@@ -334,27 +327,27 @@ export class AsVm {
 	}
 
 	public vmInit(data: Uint8Array): void {
-		const ptr = this.$._malloc(data.length) as void_ptr_t
+		const ptr = this.$.malloc(data.length) as void_ptr_t
 		this.$u8.set(data, ptr)
-		this.$._vm_init()
-		const error = this.$._vm_loader_load(ptr, data.length)
+		this.$.vm_init()
+		const error = this.$.vm_loader_load(ptr, data.length)
 		if (error != AsVm.LoaderError.NONE) {
 			throw new Error(this.getLoaderErrorMessage(error))
 		}
-		this.$._vm_call(0, 0, 0) // set up object tree
+		this.$.vm_call(0, 0, 0) // set up object tree
 		this.vmRun()
-		this.$._vm_call(1, 0, 0) // call constructors
+		this.$.vm_call(1, 0, 0) // call constructors
 	}
 
 	public vmRun(): void {
-		const exception = this.$._vm_run()
+		const exception = this.$.vm_run()
 		if (exception != AsVm.Exception.NONE) {
 			throw this.getExceptionMessage(exception, true)
 		}
 	}
 
 	public vmCall(mmid: vm_mmid_t, ...args: AsVm.Variable[]) {
-		const hashmap = this.$._vm_memory_get_ptr(mmid) as vm_hashmap_t
+		const hashmap = this.$.vm_memory_get_ptr(mmid) as vm_hashmap_t
 		let ptr: vm_variable_t = 0
 		if (args.length) {
 			ptr = this.vStackPush(args.length * vm_variable_t.__sizeof) as vm_variable_t
@@ -365,7 +358,7 @@ export class AsVm {
 				offset += vm_variable_t.__sizeof
 			}
 		}
-		this.$._vm_call(this.$u32[(hashmap + vm_hashmap_t.code) / 4], args.length, ptr)
+		this.$.vm_call(this.$u32[(hashmap + vm_hashmap_t.code) / 4], args.length, ptr)
 		if (ptr) {
 			this.vStackPop()
 		}
@@ -378,9 +371,9 @@ export class AsVm {
 			case AsVm.LoaderError.MAGICDWORD:
 				return "invalid magic number"
 			case AsVm.LoaderError.SECTION:
-				return `unknown section: ${this.readCString(this.$._vm_loader_get_error_data() as cstring_t)}`
+				return `unknown section: ${this.readCString(this.$.vm_loader_get_error_data() as cstring_t)}`
 			case AsVm.LoaderError.EXTERN:
-				return `unresolved extern: ${this.readWideString(this.$._vm_loader_get_error_data() as wstring_t)}`
+				return `unresolved extern: ${this.readWideString(this.$.vm_loader_get_error_data() as wstring_t)}`
 			default:
 				return 'unkown error'
 		}
@@ -408,7 +401,7 @@ export class AsVm {
 		this.$f32 = new Float32Array(this.memory.buffer)
 	}
 
-	private static readMetadata(module: WebAssembly.Module): EMScriptenMetadata {
+	/*private static readMetadata(module: WebAssembly.Module): EMScriptenMetadata {
 		const sections = WebAssembly.Module.customSections(module, 'emscripten_metadata')
 		if (sections.length != 1) {
 			throw new Error('no metadata found')
@@ -438,7 +431,7 @@ export class AsVm {
 			}
 		}
 		return output
-	}
+	}*/
 
 	public static isType(child: AsVm.Type, parent: AsVm.Type){
 		return AsVm.typeMatrix[AsVm.typeLut.length * child + parent] == 1
@@ -451,7 +444,7 @@ export class AsVm {
 		if (!AsVm.isType(variable.type, AsVm.Type.HASHMAP)) {
 			throw new Error(`Failed to set '${path}': target is of type '${AsVm.typeLut[type]}', expected 'hashmap'`)
 		}
-		this.$._vm_hashmap_set(this.$._vm_memory_get_ptr(variable.value as vm_mmid_t) as vm_hashmap_t, this.intern(key), value, type)
+		this.$.vm_hashmap_set(this.$.vm_memory_get_ptr(variable.value as vm_mmid_t) as vm_hashmap_t, this.intern(key), value, type)
 	}
 
 	public intern(str: string): vm_mmid_t {
@@ -459,7 +452,7 @@ export class AsVm {
 		if (cached !== undefined) {
 			return cached
 		} else {
-			const mmid = this.$._vm_string_intern(this.$._vm_memory_get_ptr(this.createVmString(str)) as vm_string_t)
+			const mmid = this.$.vm_string_intern(this.$.vm_memory_get_ptr(this.createVmString(str)) as vm_string_t)
 			this.internCache.set(str, mmid)
 			return mmid
 		}
@@ -469,7 +462,7 @@ export class AsVm {
 		const stack: string[] = []
 		let current = mmid
 		while (current != 0) {
-			const hashmap = this.$._vm_memory_get_ptr(current) as vm_hashmap_t
+			const hashmap = this.$.vm_memory_get_ptr(current) as vm_hashmap_t
 			stack.push(this.readVmString(this.$u32[(hashmap + vm_hashmap_t.name) / 4]))
 			current = this.$u32[(hashmap + vm_hashmap_t.parent) / 4]
 		}
@@ -488,22 +481,22 @@ export class AsVm {
 		if (pathList.length == 0) {
 			return {
 				value: current as number,
-				type:this.$u32[(this.$._vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
+				type:this.$u32[(this.$.vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
 			}
 		}
 		const out = this.vStackPush(vm_variable_t.__sizeof) as vm_variable_t
 		while (true) {
 			const key = pathList[i]
-			const hashmap = this.$._vm_memory_get_ptr(current) as vm_hashmap_t
+			const hashmap = this.$.vm_memory_get_ptr(current) as vm_hashmap_t
 			let type: AsVm.Type
 			if (key == 'parent') {
 				current = this.$u32[(hashmap + vm_hashmap_t.parent) / 4]
-				type = this.$u32[(this.$._vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
+				type = this.$u32[(this.$.vm_memory_get_ptr(current) + vm_hashmap_t.parent) / 4]
 			} else {
-				this.$._vm_hashmap_get(hashmap, this.intern(key), out)
+				this.$.vm_hashmap_get(hashmap, this.intern(key), out)
 				current = this.$u32[(out + vm_variable_t.data) / 4]
 				type = this.$u32[(out + vm_variable_t.type) / 4]
-				this.$._vm_dereference_m(current, type)
+				this.$.vm_dereference_m(current, type)
 			}
 			i += 1
 			if (i < pathList.length) {
@@ -535,7 +528,7 @@ export class AsVm {
 		const v = this.vStackPush(vm_hashmap_t.__sizeof) as vm_variable_t
 		const o: {[key: string]: any} = output || {}
 		for (const [key, expectedType] of keys) {
-			this.$._vm_hashmap_get(hashmap, this.intern(key), v)
+			this.$.vm_hashmap_get(hashmap, this.intern(key), v)
 			const type: AsVm.Type = this.$u32[(v + vm_variable_t.type) / 4]
 			let value: number
 			if (type == AsVm.Type.INTEGER) {
@@ -545,7 +538,7 @@ export class AsVm {
 			} else {
 				value = this.$u32[(v + vm_variable_t.data) / 4]
 			}
-			this.$._vm_dereference_m(value as vm_mmid_t, type)
+			this.$.vm_dereference_m(value as vm_mmid_t, type)
 			if (AsVm.isType(type, expectedType)) {
 				o[key] = value
 			}
@@ -559,13 +552,13 @@ export class AsVm {
 		const size = this.$u32[(array + vm_array_t.used) / 4]
 		const out: AsVm.Variable[] = []
 		for (let i = 0; i < size; i++) {
-			const exception = this.$._vm_array_get(array, i, v)
+			const exception = this.$.vm_array_get(array, i, v)
 			if (exception != AsVm.Exception.NONE) {
 				throw new Error(AsVm.exceptionLut[exception])
 			}
 			const type: AsVm.Type = this.$u32[(v + vm_variable_t.type) / 4]
 			const value: vm_variable_data_t = this.$u32[(v + vm_variable_t.data) / 4]
-			this.$._vm_dereference_m(value as vm_mmid_t, type)
+			this.$.vm_dereference_m(value as vm_mmid_t, type)
 			out.push({type, value})
 		}
 		this.vStackPop()

@@ -14,7 +14,7 @@ let test_lib_try = 0
 AsVm.create(image).then((vm) => {
 	vm.addFunction('__tryStart', (_top, argc) => {
 		if (argc != 0) {
-			vm.$._vm_exception_arity(argc, 1)
+			vm.$.vm_exception_arity(argc, 1)
 			return AsVm.Exception.ARITY
 		}
 		test_lib_try += 1
@@ -23,7 +23,7 @@ AsVm.create(image).then((vm) => {
 
 	vm.addFunction('__tryEnd', (_top, argc) => {
 		if (argc != 0) {
-			vm.$._vm_exception_arity(argc, 1)
+			vm.$.vm_exception_arity(argc, 1)
 			return AsVm.Exception.ARITY
 		}
 		test_lib_try -= 1
@@ -36,7 +36,7 @@ AsVm.create(image).then((vm) => {
 
 	vm.addFunction('__print', (top, argc) => {
 		if (argc != 1) {
-			vm.$._vm_exception_arity(argc, 1)
+			vm.$.vm_exception_arity(argc, 1)
 			return AsVm.Exception.ARITY
 		}
 		if (vm.getArgType(top, 1) != AsVm.Type.STRING) {
@@ -49,15 +49,15 @@ AsVm.create(image).then((vm) => {
 	vm.vmInit(fs.readFileSync('../test/__output/image.bin'))
 	const time = Date.now()
 	while (true) {
-		const exception = vm.$._vm_run()
+		const exception = vm.$.vm_run()
 		if (exception != AsVm.Exception.NONE) {
 			if (test_lib_try == 0) {
 				console.log(vm.getExceptionMessage(exception, true))
 				break
 			}
-			const thread = vm.$._vm_memory_get_ptr(vm.$._vm_fault_get_thread()) as vm_thread_t
-			vm.$._vm_thread_kill(thread, vm.createVmString(AsVm.exceptionLut[exception]), AsVm.Type.STRING)
-			vm.$._vm_fault_recover()
+			const thread = vm.$.vm_memory_get_ptr(vm.$.vm_fault_get_thread()) as vm_thread_t
+			vm.$.vm_thread_kill(thread, vm.createVmString(AsVm.exceptionLut[exception]), AsVm.Type.STRING)
+			vm.$.vm_fault_recover()
 		} else {
 			break
 		}
