@@ -41,7 +41,6 @@ typedef union {
 
 
 typedef vm_exception_t (*vm_native_t)(vm_variable_t*, uint32_t);
-typedef void (*vm_destructor_t)(void*);
 
 extern vm_memory_t vm_mem_const;
 extern vm_memory_t vm_mem_hashmap;
@@ -57,7 +56,7 @@ void vm_init(void);
 void vm_call(uint32_t address, uint32_t argc, const vm_variable_t* argv);
 vm_exception_t vm_run(void);
 
-extern const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT];
+extern const bool vm_destructor_lut[VM_TYPE_COUNT];
 
 void vm_dereference(void* ptr, vm_type_t type);
 

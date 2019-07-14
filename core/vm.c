@@ -26,10 +26,10 @@ static struct {
 	vm_exception_t exception;
 } last_fault;
 
-const vm_destructor_t vm_destructor_lut[VM_TYPE_COUNT] = {
-	[VM_ARRAY_T] = (vm_destructor_t)vm_array_free,
-	[VM_STRING_T] = (vm_destructor_t)vm_string_free,
-	[VM_THREAD_T] = (vm_destructor_t)vm_thread_free
+const bool vm_destructor_lut[VM_TYPE_COUNT] = {
+	[VM_ARRAY_T] = true,
+	[VM_STRING_T] = true,
+	[VM_THREAD_T] = true
 };
 
 void vm_init() {
@@ -96,12 +96,27 @@ bool vm_fault_trace(vm_symbols_location_t* loc) {
 	return vm_thread_unwind(thread);
 }
 
+static inline void destructor_dispatch(void* ptr, vm_type_t type) {
+	switch (type) {
+		case VM_ARRAY_T:
+			vm_array_free(ptr);
+			break;
+		case VM_STRING_T:
+			vm_string_free(ptr);
+			break;
+		case VM_THREAD_T:
+			vm_thread_free(ptr);
+			break;
+		default:
+			break;
+	}
+}
+
 void vm_dereference(void* ptr, vm_type_t type) {
-	vm_destructor_t destructor = vm_destructor_lut[type];
-	if (destructor) {
+	if (vm_destructor_lut[type]) {
 		uint32_t cnt = ((uint32_t*)ptr)[0];
 		if (cnt <= 1) {
-			destructor(ptr);
+			destructor_dispatch(ptr, type);
 		} else if (cnt != VM_CONSTANT) {
 			((uint32_t*)ptr)[0] = cnt - 1;
 		}
@@ -109,12 +124,11 @@ void vm_dereference(void* ptr, vm_type_t type) {
 }
 
 void vm_dereference_m(vm_mmid_t id, vm_type_t type) {
-	vm_destructor_t destructor = vm_destructor_lut[type];
-	if (destructor) {
+	if (vm_destructor_lut[type]) {
 		void* ptr = MMID_TO_PTR(id, void*);
 		uint32_t cnt = ((uint32_t*)ptr)[0];
 		if (cnt <= 1) {
-			destructor(ptr);
+			destructor_dispatch(ptr, type);
 		} else if (cnt != VM_CONSTANT) {
 			((uint32_t*)ptr)[0] = cnt - 1;
 		}

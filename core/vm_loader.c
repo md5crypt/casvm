@@ -21,15 +21,37 @@ typedef struct {
 	uint32_t code;
 } vm_loader_object_t;
 
-typedef vm_loader_error_t (*section_loader_t)(const uint8_t* data, uint32_t size);
+typedef enum {
+	SECTION_PROGMEM,
+	SECTION_SHIFT,
+	SECTION_OBJECT,
+	SECTION_STRING,
+	SECTION_EXTERN,
+	SECTION_SYM_STRING,
+	SECTION_SYM_FILE,
+	SECTION_SYM_FUNC,
+	SECTION_SYM_LINE
+} section_type_t;
 
 typedef struct {
-	const char* name;
-	const section_loader_t func;
+	const char *const name;
+	const section_type_t type;
 } section_loader_def_t;
 
 static wstring_t** externs = NULL;
-void* vm_loader_error_data = NULL;
+const void* vm_loader_error_data = NULL;
+
+const section_loader_def_t section_name_map[] = {
+	{"PROGMEM",    SECTION_PROGMEM},
+	{"SHIFT",      SECTION_SHIFT},
+	{"OBJECT",     SECTION_OBJECT},
+	{"STRING",     SECTION_STRING},
+	{"EXTERN",     SECTION_EXTERN},
+	{"SYM_STRING", SECTION_SYM_STRING},
+	{"SYM_FILE",   SECTION_SYM_FILE},
+	{"SYM_FUNC",   SECTION_SYM_FUNC},
+	{"SYM_LINE",   SECTION_SYM_LINE},
+};
 
 static wstring_t** section_create_stringmap(const uint8_t* data) {
 	uint32_t count = ((uint32_t*)data)[0];
@@ -126,17 +148,35 @@ static vm_loader_error_t section_loader_sym_line(const uint8_t* data, uint32_t s
 	return VM_LOADER_ERROR_NONE;
 }
 
-const section_loader_def_t section_loaders[] = {
-	{"PROGMEM",    section_loader_progmem},
-	{"SHIFT",      section_loader_shift},
-	{"OBJECT",     section_loader_object},
-	{"STRING",     section_loader_string},
-	{"EXTERN",     section_loader_extern},
-	{"SYM_STRING", section_loader_sym_string},
-	{"SYM_FILE",   section_loader_sym_file},
-	{"SYM_FUNC",   section_loader_sym_func},
-	{"SYM_LINE",   section_loader_sym_line},
-};
+static vm_loader_error_t section_loader_dispatch(const char* name, const uint8_t* data, uint32_t size) {
+	for (uint32_t i = 0; i < sizeof(section_name_map) / sizeof(section_name_map[0]); i++) {
+		if (strncmp(name, section_name_map[i].name, 16) == 0) {
+			switch (section_name_map[i].type) {
+				case SECTION_PROGMEM:
+					return section_loader_progmem(data, size);
+				case SECTION_SHIFT:
+					return section_loader_shift(data, size);
+				case SECTION_OBJECT:
+					return section_loader_object(data, size);
+				case SECTION_STRING:
+					return section_loader_string(data, size);
+				case SECTION_EXTERN:
+					return section_loader_extern(data, size);
+				case SECTION_SYM_STRING:
+					return section_loader_sym_string(data, size);
+				case SECTION_SYM_FILE:
+					return section_loader_sym_file(data, size);
+				case SECTION_SYM_FUNC:
+					return section_loader_sym_func(data, size);
+				case SECTION_SYM_LINE:
+					return section_loader_sym_line(data, size);
+			}
+			break;
+		}
+	}
+	vm_loader_error_data = name;
+	return VM_LOADER_ERROR_SECTION;
+}
 
 vm_loader_error_t vm_loader_load(const uint8_t* data, uint32_t size) {
 	if (strncmp((char*)data, "ASB", 4) != 0) {
@@ -145,19 +185,8 @@ vm_loader_error_t vm_loader_load(const uint8_t* data, uint32_t size) {
 	const uint8_t* end = data + size;
 	data += 4;
 	while (data < end) {
-		vm_loader_section_t* section = (vm_loader_section_t*)data;
-		section_loader_t func = NULL;
-		for (uint32_t i = 0; i < sizeof(section_loaders) / sizeof(section_loaders[0]); i++) {
-			if (strncmp(section->name, section_loaders[i].name, 16) == 0) {
-				func = section_loaders[i].func;
-				break;
-			}
-		}
-		if (func == NULL) {
-			vm_loader_error_data = section->name;
-			return VM_LOADER_ERROR_SECTION;
-		}
-		vm_loader_error_t ret = func(section->data, section->size);
+		const vm_loader_section_t* section = (vm_loader_section_t*)data;
+		vm_loader_error_t ret = section_loader_dispatch(section->name, section->data, section->size);
 		if (ret != VM_LOADER_ERROR_NONE) {
 			return ret;
 		}
