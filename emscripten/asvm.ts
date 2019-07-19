@@ -514,14 +514,28 @@ export class AsVm {
 		return this.$u32[((top + vm_variable_t.type) - (vm_variable_t.__sizeof * arg)) / 4]
 	}
 
-	public getArgValue(top: vm_variable_t, arg: number, signed?: boolean): vm_variable_data_t {
+	public getArgValue(top: vm_variable_t, arg: number): vm_variable_data_t {
+		const type = this.getArgType(top, arg)
 		const index = ((top + vm_variable_t.data) - (vm_variable_t.__sizeof * arg)) / 4
-		return signed ? this.$32[index] : this.$u32[index]
+		if (type == AsVm.Type.INTEGER) {
+			return this.$32[index]
+		}
+		if (type == AsVm.Type.FLOAT) {
+			return this.$f32[index]
+		}
+		return this.$u32[index]
 	}
 
 	public setReturnValue(top: vm_variable_t, value: vm_variable_data_t, type: AsVm.Type): void {
 		this.$u32[(top + vm_variable_t.type + vm_variable_t.__sizeof) / 4] = type
-		this.$u32[(top + vm_variable_t.data + vm_variable_t.__sizeof) / 4] = value
+		const index = (top + vm_variable_t.data + vm_variable_t.__sizeof) / 4
+		if (type == AsVm.Type.INTEGER) {
+			this.$32[index] = value
+		} else if (type == AsVm.Type.FLOAT) {
+			this.$f32[index] = value
+		} else {
+			this.$u32[index] = value
+		}
 	}
 
 	public readHashmapKeys(hashmap: vm_hashmap_t, keys: AsVm.HashmapKeyList, output?: Object): Object {
