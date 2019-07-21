@@ -164,6 +164,8 @@ interface AsVmExports {
 	vm_string_slice: (str: vm_string_t, start: int32_t, end: int32_t) => vm_mmid_t
 	vm_thread_kill: (thread: vm_thread_t, value: vm_variable_data_t, type: AsVm.Type) => void
 	vm_thread_push: (thread: vm_thread_t) => void
+	theta_star: (data: void_ptr_t, start: number, stop: number, opt: number) => void_ptr_t
+	find_closest: (data: void_ptr_t, x0: number, y0: number) => number
 }
 
 export class AsVm {
@@ -577,6 +579,24 @@ export class AsVm {
 		}
 		this.vStackPop()
 		return out
+	}
+
+	public createArray(data: AsVm.Variable[]) {
+		const mmid = this.$.vm_array_create(data.length)
+		const ptr = this.$.vm_memory_get_ptr(mmid)
+		this.$u32[(ptr + vm_array_t.used) / 4] = data.length
+		for (let i = 0; i < data.length; i++) {
+			this.$u32[(ptr + vm_array_t.data + (vm_variable_t.__sizeof * i) + vm_variable_t.type) / 4] = data[i].type
+			const index = (ptr + vm_array_t.data + (vm_variable_t.__sizeof * i) + vm_variable_t.data) / 4
+			if (data[i].type == AsVm.Type.INTEGER) {
+				this.$32[index] = data[i].value
+			} else if (data[i].type == AsVm.Type.FLOAT) {
+				this.$f32[index] = data[i].value
+			} else {
+				this.$u32[index] = data[i].value
+			}
+		}
+		return mmid
 	}
 }
 

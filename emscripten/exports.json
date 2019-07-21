@@ -48,5 +48,7 @@
 	"_vm_thread_push",
 	"_vm_thread_kill",
 	"_malloc",
-	"_free"
+	"_free",
+	"_theta_star",
+	"_find_closest"
 ]

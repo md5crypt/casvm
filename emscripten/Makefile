@@ -13,6 +13,7 @@ SOURCES := \
 	$(subst ../,,\
 		$(wildcard ../core/*.c) \
 		$(wildcard ../stdlib/*.c) \
+		$(wildcard ../thetastar/src/*.c) \
 	) \
 	vm_extern_native.c
 OBJECTS := $(addprefix $(OUTDIR)/,$(patsubst %.c,%.bc,$(SOURCES)))
@@ -52,7 +53,6 @@ vm_extern_native.c: $(SCRIPT) $(EXTERNS)
 
 $(OUTDIR)/asvm.wasm: $(OBJECTS) Makefile
 	$(CC) $(CFLAGS) $(EMOPTS) --llvm-lto 3 $(OBJECTS) -o $(OUTDIR)/asvm.wasm --source-map-base /
-	$(EMSDK)/upstream/bin/wasm2wat $(OUTDIR)/asvm.wasm -o $(OUTDIR)/asvm.wat
 
 $(OUTDIR)/asvm.js: asvm.ts
 	./node_modules/typescript/bin/tsc
