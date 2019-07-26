@@ -180,6 +180,8 @@ export class AsVm {
 
 	private static asciiDecoder = new TextDecoder('utf-8')
 	private static utf16Decoder = new TextDecoder('utf-16le')
+	private static flConverterIn = new Float32Array(1)
+	private static flConverterOut = new Uint32Array(AsVm.flConverterIn.buffer)
 
 	private externTable: AsVmExtern[]
 	private externMap: Map<string, number>
@@ -597,6 +599,11 @@ export class AsVm {
 			}
 		}
 		return mmid
+	}
+
+	public static floatToRaw(n: number): uint32_t {
+		AsVm.flConverterIn[0] = n
+		return AsVm.flConverterOut[0]
 	}
 }
 
